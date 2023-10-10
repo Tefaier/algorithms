@@ -1,18 +1,31 @@
 import java.util.*;
 
-class Heap {
-  ArrayList<Integer> arr;
-  ArrayList<Integer> operations;
+class IntWithOperation implements Comparable {
+  public int value;
+  public final int operation;
 
-  public Heap(ArrayList<Integer> arr) {
-    this.arr = arr;
-    this.operations = new ArrayList<>();
-    heapify();
+  public IntWithOperation(int value, int operation) {
+    this.value = value;
+    this.operation = operation;
   }
+
+  @Override
+  public int compareTo(Object o) {
+    if (o instanceof IntWithOperation) {
+      return value - ((IntWithOperation) o).value;
+    } else {
+      return 0;
+    }
+  }
+}
+
+class Heap {
+  ArrayList<IntWithOperation> arr;
+  int operations;
 
   public Heap() {
     this.arr = new ArrayList<>();
-    this.operations = new ArrayList<>();
+    this.operations = 0;
   }
 
   private void siftUp(int index) {
@@ -20,9 +33,8 @@ class Heap {
       return;
     }
     int parent = (index - 1) / 2;
-    if (arr.get(parent) > arr.get(index)) {
-      swapOperated(index, parent);
-      Integer tmp = arr.get(parent);
+    if (arr.get(parent).compareTo(arr.get(index)) > 0) {
+      IntWithOperation tmp = arr.get(parent);
       arr.set(parent, arr.get(index));
       arr.set(index, tmp);
       siftUp(parent);
@@ -40,10 +52,9 @@ class Heap {
       right = left;
     }
 
-    int imin = arr.get(left) < arr.get(right) ? left : right;
-    if (arr.get(index) > arr.get(imin)) {
-      swapOperated(index, imin);
-      Integer tmp = arr.get(imin);
+    int imin = arr.get(left).compareTo(arr.get(right)) < 0 ? left : right;
+    if (arr.get(index).compareTo(arr.get(imin)) > 0) {
+      IntWithOperation tmp = arr.get(imin);
       arr.set(imin, arr.get(index));
       arr.set(index, tmp);
       siftDown(imin);
@@ -51,67 +62,38 @@ class Heap {
   }
 
   public void add(Integer value) {
-    recordOperation(arr.size());
-    arr.add(value);
+    operations++;
+    arr.add(new IntWithOperation(value, operations));
     siftUp(arr.size() - 1);
   }
 
   public Integer getMin() {
-    recordOperation(-1);
-    return arr.get(0);
+    operations++;
+    return arr.get(0).value;
   }
 
-  public Integer extractMin() {
-    recordOperation(-1);
-    updateOperated(0, -1);
-    if (arr.size() > 1) {
-      updateOperated(arr.size() - 1, 0);
-    }
-    Integer tmp = arr.get(0);
+  public void extractMin() {
+    operations++;
     arr.set(0, arr.get(arr.size() - 1));
     arr.remove(arr.size() - 1);
     siftDown(0);
-    return tmp;
-  }
-
-  public boolean isEmpty() {
-    return arr.size() == 0;
   }
 
   public void adjustValue(int operation, int change) {
-    recordOperation(-1);
+    operations++;
     int index = getOperated(operation);
-    arr.set(index, arr.get(index) - change);
+    arr.get(index).value -= change;
     siftUp(index);
-  }
-
-  private void heapify() {
-    for (int i = arr.size() / 2; i >= 0; i--) {
-      siftDown(i);
-    }
-  }
-
-  private void recordOperation(int index) {
-    // index of the new element and -1 if it's not relevant
-    operations.add(index);
   }
 
   private int getOperated(int operation) {
     // returns index of element in the arr
-    return operations.get(operation - 1);
-  }
-
-  private void updateOperated(int index, int indexNew) {
-    int location = operations.indexOf(index);
-    operations.set(location, indexNew);
-  }
-
-  private void swapOperated(int swap1, int swap2) {
-    int location1 = operations.indexOf(swap1);
-    int location2 = operations.indexOf(swap2);
-    int tmp = operations.get(location1);
-    operations.set(location1, operations.get(location2));
-    operations.set(location2, tmp);
+    for (int i = 0; i < arr.size(); i++) {
+      if (arr.get(i).operation == operation) {
+        return i;
+      }
+    }
+    return -1;
   }
 }
 
