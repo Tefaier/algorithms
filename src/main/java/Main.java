@@ -1,21 +1,12 @@
 import java.util.*;
 
-class IntWithOperation implements Comparable {
+class IntWithOperation {
   public long value;
   public final long operation;
 
   public IntWithOperation(long value, long operation) {
     this.value = value;
     this.operation = operation;
-  }
-
-  @Override
-  public int compareTo(Object o) {
-    if (o instanceof IntWithOperation) {
-      return (int) (value - ((IntWithOperation) o).value);
-    } else {
-      return 0;
-    }
   }
 }
 
@@ -33,7 +24,7 @@ class Heap {
       return;
     }
     int parent = (index - 1) / 2;
-    if (arr.get(parent).compareTo(arr.get(index)) > 0) {
+    if (arr.get(parent).value - arr.get(index).value > 0) {
       IntWithOperation tmp = arr.get(parent);
       arr.set(parent, arr.get(index));
       arr.set(index, tmp);
@@ -52,8 +43,8 @@ class Heap {
       right = left;
     }
 
-    int imin = arr.get(left).compareTo(arr.get(right)) > 0 ? right : left;
-    if (arr.get(index).compareTo(arr.get(imin)) > 0) {
+    int imin = arr.get(left).value - arr.get(right).value > 0 ? right : left;
+    if (arr.get(index).value - arr.get(imin).value > 0) {
       IntWithOperation tmp = arr.get(imin);
       arr.set(imin, arr.get(index));
       arr.set(index, tmp);
@@ -106,7 +97,6 @@ public class Main {
 
   public static void Task01_3() {
     Heap heap = new Heap();
-    ArrayList<Long> returnLog = new ArrayList<>();
     long operations = in.nextLong();
     in.nextLine();
     for (long i = 0; i < operations; i++) {
@@ -121,7 +111,7 @@ public class Main {
           heap.adjustValue(Long.parseLong(details[1]), Long.parseLong(details[2]));
           break;
         case "getMin":
-          returnLog.add(heap.getMin());
+          System.out.println(heap.getMin());
           break;
         case "extractMin":
           heap.extractMin();
@@ -129,9 +119,6 @@ public class Main {
         default:
           break;
       }
-    }
-    for (Long value : returnLog) {
-      System.out.println(value);
     }
   }
 }
