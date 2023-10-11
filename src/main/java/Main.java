@@ -52,7 +52,7 @@ class Heap {
       right = left;
     }
 
-    int imin = arr.get(left).compareTo(arr.get(right)) < 0 ? left : right;
+    int imin = arr.get(left).compareTo(arr.get(right)) > 0 ? right : left;
     if (arr.get(index).compareTo(arr.get(imin)) > 0) {
       IntWithOperation tmp = arr.get(imin);
       arr.set(imin, arr.get(index));
@@ -62,28 +62,28 @@ class Heap {
   }
 
   public void add(Integer value) {
-    operations++;
     arr.add(new IntWithOperation(value, operations));
     siftUp(arr.size() - 1);
   }
 
   public Integer getMin() {
-    operations++;
     return arr.get(0).value;
   }
 
   public void extractMin() {
-    operations++;
     arr.set(0, arr.get(arr.size() - 1));
     arr.remove(arr.size() - 1);
     siftDown(0);
   }
 
   public void adjustValue(int operation, int change) {
-    operations++;
     int index = getOperated(operation);
     arr.get(index).value -= change;
     siftUp(index);
+  }
+
+  public void recordOperation() {
+    operations++;
   }
 
   private int getOperated(int operation) {
@@ -93,7 +93,7 @@ class Heap {
         return i;
       }
     }
-    return -1;
+    throw new RuntimeException("Lol");
   }
 }
 
@@ -111,6 +111,7 @@ public class Main {
     for (int i = 0; i < operations; i++) {
       String command = in.nextLine().replace("\n", "");
       String[] details = command.split(" ");
+      heap.recordOperation();
       switch (details[0]) {
         case "insert":
           heap.add(Integer.parseInt(details[1]));
