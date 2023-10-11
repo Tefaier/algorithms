@@ -1,3 +1,5 @@
+package Task01_3;
+
 import java.util.*;
 
 class IntWithOperation {
@@ -92,10 +94,6 @@ public class Main {
   public static Scanner in = new Scanner(System.in);
 
   public static void main(String[] args) {
-    Task01_3();
-  }
-
-  public static void Task01_3() {
     Heap heap = new Heap();
     long operations = in.nextLong();
     in.nextLine();
