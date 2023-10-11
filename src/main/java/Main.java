@@ -1,10 +1,10 @@
 import java.util.*;
 
 class IntWithOperation implements Comparable {
-  public int value;
-  public final int operation;
+  public long value;
+  public final long operation;
 
-  public IntWithOperation(int value, int operation) {
+  public IntWithOperation(long value, long operation) {
     this.value = value;
     this.operation = operation;
   }
@@ -12,7 +12,7 @@ class IntWithOperation implements Comparable {
   @Override
   public int compareTo(Object o) {
     if (o instanceof IntWithOperation) {
-      return value - ((IntWithOperation) o).value;
+      return (int) (value - ((IntWithOperation) o).value);
     } else {
       return 0;
     }
@@ -61,12 +61,12 @@ class Heap {
     }
   }
 
-  public void add(Integer value) {
+  public void add(Long value) {
     arr.add(new IntWithOperation(value, operations));
     siftUp(arr.size() - 1);
   }
 
-  public Integer getMin() {
+  public Long getMin() {
     return arr.get(0).value;
   }
 
@@ -76,7 +76,7 @@ class Heap {
     siftDown(0);
   }
 
-  public void adjustValue(int operation, int change) {
+  public void adjustValue(long operation, long change) {
     int index = getOperated(operation);
     arr.get(index).value -= change;
     siftUp(index);
@@ -86,7 +86,7 @@ class Heap {
     operations++;
   }
 
-  private int getOperated(int operation) {
+  private int getOperated(long operation) {
     // returns index of element in the arr
     for (int i = 0; i < arr.size(); i++) {
       if (arr.get(i).operation == operation) {
@@ -106,21 +106,22 @@ public class Main {
 
   public static void Task01_3() {
     Heap heap = new Heap();
-    int operations = in.nextInt();
+    ArrayList<Long> returnLog = new ArrayList<>();
+    long operations = in.nextLong();
     in.nextLine();
-    for (int i = 0; i < operations; i++) {
+    for (long i = 0; i < operations; i++) {
       String command = in.nextLine().replace("\n", "");
       String[] details = command.split(" ");
       heap.recordOperation();
       switch (details[0]) {
         case "insert":
-          heap.add(Integer.parseInt(details[1]));
+          heap.add(Long.parseLong(details[1]));
           break;
         case "decreaseKey":
-          heap.adjustValue(Integer.parseInt(details[1]), Integer.parseInt(details[2]));
+          heap.adjustValue(Long.parseLong(details[1]), Long.parseLong(details[2]));
           break;
         case "getMin":
-          System.out.println(heap.getMin());
+          returnLog.add(heap.getMin());
           break;
         case "extractMin":
           heap.extractMin();
@@ -128,6 +129,9 @@ public class Main {
         default:
           break;
       }
+    }
+    for (Long value : returnLog) {
+      System.out.println(value);
     }
   }
 }
