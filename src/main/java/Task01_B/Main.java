@@ -1,7 +1,6 @@
 package Task01_B;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Scanner;
 
 class Heap<T extends Comparable> {
@@ -96,17 +95,18 @@ public class Main {
 
   public static void main(String[] args) {
     Scanner input = new Scanner(System.in);
-    Heap<SegmentBorder> heap = new Heap();
+    ArrayList<SegmentBorder> values = new ArrayList<>();
     ArrayList<SegmentBorder> sorted = new ArrayList<>();
-    ArrayList<ArrayList<Integer>> answer = new ArrayList<>();
+    ArrayList<Integer> answerL = new ArrayList<>();
+    ArrayList<Integer> answerR = new ArrayList<>();
 
     int segmentsNumber = input.nextInt();
 
     for (int i = 0; i < segmentsNumber; i++) {
-      heap.add(new SegmentBorder(input.nextInt(), true));
-      heap.add(new SegmentBorder(input.nextInt(), false));
+      values.add(new SegmentBorder(input.nextInt(), true));
+      values.add(new SegmentBorder(input.nextInt(), false));
     }
-
+    Heap<SegmentBorder> heap = new Heap(values);
     for (int i = 0; i < segmentsNumber * 2; i++) {
       sorted.add(heap.getMin());
     }
@@ -119,14 +119,15 @@ public class Main {
       }
       counter += border.borderState;
       if (counter == 0) {
-        answer.add(new ArrayList<>(Arrays.asList(startPos, border.value)));
+        answerL.add(startPos);
+        answerR.add(border.value);
         startPos = null;
       }
     }
 
-    System.out.println(answer.size());
-    for (ArrayList list : answer) {
-      System.out.println(list.get(0) + " " + list.get(1));
+    System.out.println(answerL.size());
+    for (int i = 0; i < answerL.size(); i++) {
+      System.out.println(answerL.get(i) + " " + answerR.get(i));
     }
   }
 }
