@@ -16,7 +16,7 @@ public class Main {
       if (k <= pivotPos) {
         return getStatK(Arrays.copyOfRange(arr, 0, pivotPos), k);
       } else {
-        return getStatK(Arrays.copyOfRange(arr, pivotPos, arr.length), k - pivotPos + 1);
+        return getStatK(Arrays.copyOfRange(arr, pivotPos, arr.length), k - pivotPos);
       }
     }
   }
@@ -33,7 +33,7 @@ public class Main {
         swap(arr, i, j);
       }
     }
-    //swap(arr, i + 1, to);
+    // swap(arr, i + 1, to);
     return (i + 1);
   }
 
@@ -90,6 +90,6 @@ public class Main {
       array[i] = (array[i - 1] * 123 + array[i - 2] * 45) % mod;
     }
 
-    System.out.print(getStatK(array, stat));
+    System.out.println(getStatK(array, stat));
   }
 }
