@@ -14,6 +14,10 @@ public class Main {
       heapify();
     }
 
+    public int size() {
+      return arr.size();
+    }
+
     public Heap() {
       this.arr = new ArrayList<>();
     }
@@ -79,28 +83,24 @@ public class Main {
 
   public static void main(String[] args) {
     Scanner input = new Scanner(System.in);
-    int mod = 1 << 30;
+    int mod = (1 << 30) - 1;
     int valuesToCount = input.nextInt();
     int smallestToGet = input.nextInt();
     int a0 = input.nextInt();
     int mult = input.nextInt();
     int incr = input.nextInt();
-    int limit = Math.min(valuesToCount, smallestToGet);
 
-    ArrayList<Integer> smallestValues = new ArrayList<>(limit);
-    ArrayList<Integer> sortedValues = new ArrayList<>(limit);
-    smallestValues.add(a0 * mult + incr);
-    int registered = 1;
-    for (; registered < limit; registered++) {
-      smallestValues.add((smallestValues.get(registered - 1) * mult + incr) % mod);
-    }
+    ArrayList<Long> sortedValues = new ArrayList<>();
 
-    int lastValue = smallestValues.get(limit - 1);
-    Heap<Integer> heap = new Heap<Integer>(smallestValues);
+    long lastValue = (a0 * mult + incr) & mod;
+    Heap<Long> heap = new Heap();
+    heap.add(lastValue);
 
-    for (; registered < valuesToCount; registered++) {
-      lastValue = (lastValue * mult + incr) % mod;
-      if (lastValue < heap.top()) {
+    for (int i = 2; i <= valuesToCount; i++) {
+      lastValue = (lastValue * mult + incr) & mod;
+      if (heap.size() < smallestToGet) {
+        heap.add(lastValue);
+      } else if (lastValue < heap.top()) {
         heap.removeMax();
         heap.add(lastValue);
       }
