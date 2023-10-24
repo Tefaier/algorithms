@@ -136,7 +136,9 @@ public class Main {
       }
 
       private void siftUp(int index) {
-        if (index == 0) return;
+        if (index == 0) {
+          return;
+        }
         int parent = (index - 1) / 2;
         if (arr.get(parent).compareTo(arr.get(index)) < 0) {
           IntWithData tmp = arr.get(parent);
@@ -154,11 +156,9 @@ public class Main {
         if (right > arr.size()) {
           return;
         }
-
         if (right == arr.size()) {
           right = left;
         }
-
         int imax = arr.get(left).compareTo(arr.get(right)) > 0 ? left : right;
         if (arr.get(index).compareTo(arr.get(imax)) < 0) {
           IntWithData tmp = arr.get(imax);
@@ -203,7 +203,7 @@ public class Main {
           siftDown(index);
         } else {
           int parent = (index - 1) / 2;
-          if (arr.get(parent).compareTo(arr.get(index)) > 0) {
+          if (arr.get(parent).compareTo(arr.get(index)) < 0) {
             siftUp(index);
           } else {
             siftDown(index);
@@ -234,8 +234,8 @@ public class Main {
           IntWithData tmp = arr.get(parent);
           arr.set(parent, arr.get(index));
           arr.set(index, tmp);
-          arr.get(parent).locationInMax = parent;
-          arr.get(index).locationInMax = index;
+          arr.get(parent).locationInMin = parent;
+          arr.get(index).locationInMin = index;
           siftUp(parent);
         }
       }
@@ -243,12 +243,12 @@ public class Main {
       private void siftDown(int index) {
         int left = 2 * index + 1;
         int right = 2 * index + 2;
-        if (right > arr.size()) return;
-
+        if (right > arr.size()) {
+          return;
+        }
         if (right == arr.size()) {
           right = left;
         }
-
         int imin = arr.get(left).compareTo(arr.get(right)) < 0 ? left : right;
         if (arr.get(index).compareTo(arr.get(imin)) > 0) {
           IntWithData tmp = arr.get(imin);
