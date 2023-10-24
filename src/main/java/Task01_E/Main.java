@@ -2,6 +2,7 @@ package Task01_E;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 
 public class Main {
 
@@ -101,185 +102,292 @@ public class Main {
     }
   }
 
-  static class Tree {
-    private Node root = null;
-    private int size = 0;
+  static class MiniMax {
+    static class IntWithData implements Comparable {
+      public int locationInMin;
+      public int locationInMax;
+      public final int value;
 
-    private static class Node {
-      int value = 0;
-      Node left = null;
-      Node right = null;
-      Node parent = null;
-
-      public Node(int value, Node parent) {
+      IntWithData(int value) {
         this.value = value;
-        this.parent = parent;
       }
-    }
 
-    public void add(int value) {
-      if (root == null) {
-        root = new Node(value, null);
-        size++;
-        return;
-      }
-      Node tmp = root;
-      while (tmp != null) {
-        /*
-        if (tmp.value == value) {
-          break;
-        }
-        */
-        if (tmp.value > value) {
-          if (tmp.left == null) {
-            tmp.left = new Node(value, tmp);
-            size++;
-            return;
-          }
-          tmp = tmp.left;
+      @Override
+      public int compareTo(Object o) {
+        if (o instanceof IntWithData) {
+          return value - ((IntWithData) o).value;
         } else {
-          if (tmp.right == null) {
-            tmp.right = new Node(value, tmp);
-            size++;
-            return;
-          }
-          tmp = tmp.right;
+          return 0;
         }
       }
     }
 
-    public boolean find(int value) {
-      Node tmp = root;
-      while (tmp != null) {
-        if (tmp.value == value) {
-          return true;
+    static class HeapMax {
+      ArrayList<IntWithData> arr;
+      MiniMax controller;
+
+      public HeapMax(MiniMax controller) {
+        this.arr = new ArrayList<>();
+        this.controller = controller;
+      }
+
+      public int size() {
+        return arr.size();
+      }
+
+      private void siftUp(int index) {
+        if (index == 0) return;
+        int parent = (index - 1) / 2;
+        if (arr.get(parent).compareTo(arr.get(index)) < 0) {
+          IntWithData tmp = arr.get(parent);
+          arr.set(parent, arr.get(index));
+          arr.set(index, tmp);
+          arr.get(parent).locationInMax = parent;
+          arr.get(index).locationInMax = index;
+          siftUp(parent);
         }
-        if (tmp.value > value) {
-          tmp = tmp.left;
+      }
+
+      private void siftDown(int index) {
+        int left = 2 * index + 1;
+        int right = 2 * index + 2;
+        if (right > arr.size()) {
+          return;
+        }
+
+        if (right == arr.size()) {
+          right = left;
+        }
+
+        int imax = arr.get(left).compareTo(arr.get(right)) > 0 ? left : right;
+        if (arr.get(index).compareTo(arr.get(imax)) < 0) {
+          IntWithData tmp = arr.get(imax);
+          arr.set(imax, arr.get(index));
+          arr.set(index, tmp);
+          arr.get(imax).locationInMax = imax;
+          arr.get(index).locationInMax = index;
+          siftDown(imax);
+        }
+      }
+
+      public void add(IntWithData unit) {
+        arr.add(unit);
+        unit.locationInMax = arr.size() - 1;
+        siftUp(arr.size() - 1);
+      }
+
+      public IntWithData top() {
+        return arr.get(0);
+      }
+
+      public boolean isEmpty() {
+        return arr.size() == 0;
+      }
+
+      public void clear() {
+        arr = new ArrayList<>();
+      }
+
+      public void removeUnit(IntWithData unit) {
+        int index = unit.locationInMax;
+        if (index == arr.size() - 1) {
+          arr.remove(arr.size() - 1);
+          return;
+        }
+        unit.locationInMax = -1;
+        IntWithData tmp = arr.get(arr.size() - 1);
+        arr.set(index, tmp);
+        tmp.locationInMax = index;
+        arr.remove(arr.size() - 1);
+        if (index == 0) {
+          siftDown(index);
         } else {
-          tmp = tmp.right;
+          int parent = (index - 1) / 2;
+          if (arr.get(parent).compareTo(arr.get(index)) > 0) {
+            siftUp(index);
+          } else {
+            siftDown(index);
+          }
         }
       }
-      return false;
     }
 
-    public String getMin() {
-      if (root == null) {
-        return "error";
+    static class HeapMin {
+      ArrayList<IntWithData> arr;
+      MiniMax controller;
+
+      public HeapMin(MiniMax controller) {
+        this.arr = new ArrayList<>();
+        this.controller = controller;
       }
-      Node tmp = root;
-      while (tmp.left != null) {
-        tmp = tmp.left;
+
+      public int size() {
+        return arr.size();
       }
-      return Integer.toString(tmp.value);
+
+      private void siftUp(int index) {
+        if (index == 0) {
+          return;
+        }
+        int parent = (index - 1) / 2;
+        if (arr.get(parent).compareTo(arr.get(index)) > 0) {
+          IntWithData tmp = arr.get(parent);
+          arr.set(parent, arr.get(index));
+          arr.set(index, tmp);
+          arr.get(parent).locationInMax = parent;
+          arr.get(index).locationInMax = index;
+          siftUp(parent);
+        }
+      }
+
+      private void siftDown(int index) {
+        int left = 2 * index + 1;
+        int right = 2 * index + 2;
+        if (right > arr.size()) return;
+
+        if (right == arr.size()) {
+          right = left;
+        }
+
+        int imin = arr.get(left).compareTo(arr.get(right)) < 0 ? left : right;
+        if (arr.get(index).compareTo(arr.get(imin)) > 0) {
+          IntWithData tmp = arr.get(imin);
+          arr.set(imin, arr.get(index));
+          arr.set(index, tmp);
+          arr.get(imin).locationInMin = imin;
+          arr.get(index).locationInMin = index;
+          siftDown(imin);
+        }
+      }
+
+      public void add(IntWithData unit) {
+        arr.add(unit);
+        unit.locationInMin = arr.size() - 1;
+        siftUp(arr.size() - 1);
+      }
+
+      public IntWithData top() {
+        return arr.get(0);
+      }
+
+      public boolean isEmpty() {
+        return arr.size() == 0;
+      }
+
+      public void clear() {
+        arr = new ArrayList<>();
+      }
+
+      public void removeUnit(IntWithData unit) {
+        int index = unit.locationInMin;
+        if (index == arr.size() - 1) {
+          arr.remove(arr.size() - 1);
+          return;
+        }
+        unit.locationInMin = -1;
+        IntWithData tmp = arr.get(arr.size() - 1);
+        arr.set(index, tmp);
+        tmp.locationInMin = index;
+        arr.remove(arr.size() - 1);
+        if (index == 0) {
+          siftDown(index);
+        } else {
+          int parent = (index - 1) / 2;
+          if (arr.get(parent).compareTo(arr.get(index)) > 0) {
+            siftUp(index);
+          } else {
+            siftDown(index);
+          }
+        }
+      }
     }
 
-    public String getMax() {
-      if (root == null) {
-        return "error";
-      }
-      Node tmp = root;
-      while (tmp.right != null) {
-        tmp = tmp.right;
-      }
-      return Integer.toString(tmp.value);
-    }
+    private HeapMin heapMin;
+    private HeapMax heapMax;
 
-    public String extractMin() {
-      if (root == null) {
-        return "error";
-      }
-      Node tmp = root;
-      while (tmp.left != null) {
-        tmp = tmp.left;
-      }
-      if (tmp.parent == null) {
-        root = tmp.right;
-        if (root != null) {
-          root.parent = null;
-        }
-      } else {
-        tmp.parent.left = tmp.right;
-        if (tmp.right != null) {
-          tmp.right.parent = tmp.parent;
-        }
-      }
-      size--;
-      return Integer.toString(tmp.value);
-    }
-
-    public String extractMax() {
-      if (root == null) {
-        return "error";
-      }
-      Node tmp = root;
-      while (tmp.right != null) {
-        tmp = tmp.right;
-      }
-      if (tmp.parent == null) {
-        root = tmp.left;
-        if (root != null) {
-          root.parent = null;
-        }
-      } else {
-        tmp.parent.right = tmp.left;
-        if (tmp.left != null) {
-          tmp.left.parent = tmp.parent;
-        }
-      }
-      size--;
-      return Integer.toString(tmp.value);
+    MiniMax() {
+      heapMin = new HeapMin(this);
+      heapMax = new HeapMax(this);
     }
 
     public int size() {
-      return size;
+      return heapMin.size();
     }
 
     public void clear() {
-      root = null;
-      size = 0;
+      heapMax.clear();
+      heapMin.clear();
     }
 
-    public void print() {
-      print(root);
+    public void add(int value) {
+      IntWithData intWithData = new IntWithData(value);
+      heapMin.add(intWithData);
+      heapMax.add(intWithData);
     }
 
-    private void print(Node node) {
-      if (node == null) return;
-      print(node.left);
-      System.out.print(node.value + " ");
-      print(node.right);
+    public String getMin() {
+      if (heapMin.size() > 0) {
+        return Integer.toString(heapMin.top().value);
+      }
+      return "error";
+    }
+
+    public String getMax() {
+      if (heapMax.size() > 0) {
+        return Integer.toString(heapMax.top().value);
+      }
+      return "error";
+    }
+
+    public String extractMin() {
+      if (heapMin.size() > 0) {
+        IntWithData unit = heapMin.top();
+        heapMin.removeUnit(unit);
+        heapMax.removeUnit(unit);
+        return Integer.toString(unit.value);
+      }
+      return "error";
+    }
+
+    public String extractMax() {
+      if (heapMax.size() > 0) {
+        IntWithData unit = heapMax.top();
+        heapMin.removeUnit(unit);
+        heapMax.removeUnit(unit);
+        return Integer.toString(unit.value);
+      }
+      return "error";
     }
   }
 
   public static void main(String[] args) {
     Parser parser = new Parser(System.in);
-    Tree tree = new Tree();
+    MiniMax miniMax = new MiniMax();
     int commandsNumber = parser.nextInt();
     for (int i = 0; i < commandsNumber; i++) {
       String command = parser.nextString(12);
       switch (command) {
         case "insert" -> {
-          tree.add(parser.nextInt());
+          miniMax.add(parser.nextInt());
           System.out.println("ok");
         }
         case "extract_max" -> {
-          System.out.println(tree.extractMax());
+          System.out.println(miniMax.extractMax());
         }
         case "extract_min" -> {
-          System.out.println(tree.extractMin());
+          System.out.println(miniMax.extractMin());
         }
         case "get_max" -> {
-          System.out.println(tree.getMax());
+          System.out.println(miniMax.getMax());
         }
         case "get_min" -> {
-          System.out.println(tree.getMin());
+          System.out.println(miniMax.getMin());
         }
         case "size" -> {
-          System.out.println(tree.size());
+          System.out.println(miniMax.size());
         }
         case "clear" -> {
-          tree.clear();
+          miniMax.clear();
           System.out.println("ok");
         }
       }
