@@ -238,15 +238,15 @@ public class Main {
     AVLTree treeOnCarNames = new AVLTree();
     int participants = in.nextInt();
     for (int i = 0; i < participants; i++) {
-      String nickname = in.nextString(100);
-      String carName = in.nextString(100);
+      String nickname = in.nextString(300);
+      String carName = in.nextString(300);
       treeOnNicknames.add(nickname.hashCode(), carName);
       treeOnCarNames.add(carName.hashCode(), nickname);
     }
 
     int requests = in.nextInt();
     for (int i = 0; i < requests; i++) {
-      int request = in.nextString(100).hashCode();
+      int request = in.nextString(300).hashCode();
       AVLTree.Node node = treeOnNicknames.find(request);
       if (node != null) {
         System.out.println(node.content);
