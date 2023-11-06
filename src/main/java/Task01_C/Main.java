@@ -195,7 +195,6 @@ public class Main {
   public static void main(String[] args) {
     Heap heap = new Heap();
     long operations = in.nextLong();
-    //  List<Long> answer = new ArrayList<>();
     for (long i = 0; i < operations; i++) {
       String command = in.nextString(100);
       heap.recordOperation();
@@ -208,7 +207,6 @@ public class Main {
           break;
         case "getMin":
           System.out.println(heap.getMin());
-          //  answer.add(heap.getMin());
           break;
         case "extractMin":
           heap.extractMin();
@@ -217,6 +215,5 @@ public class Main {
           break;
       }
     }
-    //  answer.forEach(System.out::println);
   }
 }
