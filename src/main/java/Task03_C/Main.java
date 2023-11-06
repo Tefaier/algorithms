@@ -1,105 +1,8 @@
 package Task03_C;
 
-import java.io.DataInputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-
-class Parser {
-
-  private final int BUFFER_SIZE = 1 << 16;
-  private DataInputStream din;
-  private byte[] buffer;
-  private int bufferPointer, bytesRead;
-
-  public Parser(InputStream in) {
-    din = new DataInputStream(in);
-    buffer = new byte[BUFFER_SIZE];
-    bufferPointer = bytesRead = 0;
-  }
-
-  public String nextString(int maxSize) {
-    byte[] ch = new byte[maxSize];
-    int point = 0;
-    try {
-      byte c = read();
-      while (c == ' ' || c == '\n' || c == '\r') {
-        c = read();
-      }
-      while (c != ' ' && c != '\n' && c != '\r') {
-        ch[point++] = c;
-        c = read();
-      }
-    } catch (Exception e) {
-    }
-    return new String(ch, 0, point);
-  }
-
-  public int nextInt() {
-    int ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
-    }
-    return ret;
-  }
-
-  public long nextLong() {
-    long ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
-    }
-    return ret;
-  }
-
-  private void fillBuffer() {
-    try {
-      bytesRead = din.read(buffer, bufferPointer = 0, BUFFER_SIZE);
-    } catch (Exception e) {
-    }
-    if (bytesRead == -1) buffer[0] = -1;
-  }
-
-  private byte read() {
-    if (bufferPointer == bytesRead) {
-      fillBuffer();
-    }
-    return buffer[bufferPointer++];
-  }
-}
+import java.util.Scanner;
 
 class AVLTree {
   private Node root = null;
@@ -233,20 +136,21 @@ class AVLTree {
 
 public class Main {
   public static void main(String[] args) {
-    Parser in = new Parser(System.in);
+    Scanner in = new Scanner(System.in);
     AVLTree treeOnNicknames = new AVLTree();
     AVLTree treeOnCarNames = new AVLTree();
-    int participants = in.nextInt();
+    int participants = Integer.parseInt(in.nextLine());
     for (int i = 0; i < participants; i++) {
-      String nickname = in.nextString(300);
-      String carName = in.nextString(300);
+      String[] line = in.nextLine().split(" ");
+      String nickname = line[0];
+      String carName = line[1];
       treeOnNicknames.add(nickname.hashCode(), carName);
       treeOnCarNames.add(carName.hashCode(), nickname);
     }
 
-    int requests = in.nextInt();
+    int requests = Integer.parseInt(in.nextLine());
     for (int i = 0; i < requests; i++) {
-      int request = in.nextString(300).hashCode();
+      int request = in.nextLine().hashCode();
       AVLTree.Node node = treeOnNicknames.find(request);
       if (node != null) {
         System.out.println(node.content);
