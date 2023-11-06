@@ -117,12 +117,13 @@ public class Main {
       this.order = order;
     }
 
-
     @Override
     public String toString() {
-      return Integer.toString(parent != null ? parent.order : 0) + " " +
-          Integer.toString(left != null ? left.order : 0) + " " +
-          Integer.toString(right != null ? right.order : 0);
+      return Integer.toString(parent != null ? parent.order : 0)
+          + " "
+          + Integer.toString(left != null ? left.order : 0)
+          + " "
+          + Integer.toString(right != null ? right.order : 0);
     }
   }
 
