@@ -107,21 +107,22 @@ class DecTreeSum {
   private int size = 0;
 
   private static class Node {
-    int value = 0;
+    public int value;
     public Node left = null;
     public Node right = null;
-    public int size = 0;
+    public long sum;
     private long priority;
 
     public Node(int value) {
       this.value = value;
+      this.sum = value;
       this.priority = random.nextLong();
     }
   }
 
   private static class Pair {
-    Node first = null;
-    Node second = null;
+    Node first;
+    Node second;
 
     public Pair(Node first, Node second) {
       this.first = first;
@@ -141,14 +142,14 @@ class DecTreeSum {
     if (node.value > key) {
       Pair pair = split(node.left, key);
       node.left = pair.second;
-      updateSize(pair.first);
-      updateSize(node);
+      updateVal(pair.first);
+      updateVal(node);
       return new Pair(pair.first, node);
     } else {
       Pair pair = split(node.right, key);
       node.right = pair.first;
-      updateSize(node);
-      updateSize(pair.second);
+      updateVal(node);
+      updateVal(pair.second);
       return new Pair(node, pair.second);
     }
   }
@@ -156,33 +157,33 @@ class DecTreeSum {
   // less and bigger in terms of value
   private Node merge(Node less, Node bigger) {
     if (less == null) {
-      updateSize(bigger);
+      updateVal(bigger);
       return bigger;
     }
     if (bigger == null) {
-      updateSize(less);
+      updateVal(less);
       return less;
     }
     // works by priority (as a binary heap)
     if (less.priority > bigger.priority) {
       less.right = merge(less.right, bigger);
-      updateSize(less);
+      updateVal(less);
       return less;
     } else {
       bigger.left = merge(less, bigger.left);
-      updateSize(bigger);
+      updateVal(bigger);
       return bigger;
     }
   }
 
-  private void updateSize(Node node) {
+  private void updateVal(Node node) {
     if (node != null) {
-      node.size = 1 + getSize(node.left) + getSize(node.right);
+      node.sum = node.value + getVal(node.left) + getVal(node.right);
     }
   }
 
-  private int getSize(Node node) {
-    return node == null ? 0 : node.size;
+  private long getVal(Node node) {
+    return node == null ? 0 : node.sum;
   }
 
   public void insert(int value) {
@@ -210,57 +211,12 @@ class DecTreeSum {
     return false;
   }
 
-  public void delete(int value) {
-    if (!find(value)) {
-      return;
-    }
-    size--;
-    Pair pair = split(root, value);
-    Pair leftPair = split(pair.first, value - 1);
-    root = merge(leftPair.first, pair.second);
-  }
-
-  // excludes the value itself
-  // depending on bigger will search next bigger or next smaller
-  public int getNext(int value, boolean bigger) {
-    return getNext(root, value, bigger);
-  }
-
-  private int getNext(Node node, int value, boolean bigger) {
-    if (node == null) {
-      return bigger ? Integer.MAX_VALUE : Integer.MIN_VALUE;
-    }
-    if (bigger && node.value > value || !bigger && node.value < value) {
-      return bigger
-          ? Math.min(node.value, getNext(node.left, value, bigger))
-          : Math.max(node.value, getNext(node.right, value, bigger));
-    } else {
-      return bigger ? getNext(node.right, value, bigger) : getNext(node.left, value, bigger);
-    }
-  }
-
-  public int getKth(int k) {
-    if (size <= k || k < 0) {
-      return Integer.MIN_VALUE;
-    }
-    Node tmp = root;
-    int toAdd = 0;
-    while (tmp != null) {
-      int index = toAdd + getSize(tmp.left);
-      if (index == k) {
-        return tmp.value;
-      } else if (index < k) {
-        toAdd = index + 1;
-        tmp = tmp.right;
-      } else {
-        tmp = tmp.left;
-      }
-    }
-    throw new RuntimeException("Error with sizes log");
-  }
-
   public long getSum(int from, int to) {
-
+    Pair pairLeft = split(root, from - 1);
+    Pair pairRight = split(pairLeft.second, to);
+    long answer = pairRight.first == null ? 0 : pairRight.first.sum;
+    merge(merge(pairLeft.first, pairRight.first), pairRight.second);
+    return answer;
   }
 }
 
