@@ -226,6 +226,18 @@ public class Main {
     }
   }
 
+  private static Random random = new Random();
+
+  private static List<Dot> generateStation(int xLimit, int yLimit) {
+    int x = random.nextInt(1, xLimit);
+    int y1 = random.nextInt(0, yLimit - 1);
+    int y2 = random.nextInt(y1 + 1, yLimit + 1);
+    List<Dot> answer = new ArrayList<>();
+    answer.add(new Dot(x, y1, 1));
+    answer.add(new Dot(x, y2, -1));
+    return answer;
+  }
+
   public static void main(String[] args) {
     Parser in = new Parser(System.in);
     int stations = in.nextInt();
@@ -235,11 +247,16 @@ public class Main {
     DecTree treeOnSegments = new DecTree(0, trackLength);
 
     for (int i = 0; i < stations; i++) {
+      List<Dot> get = generateStation(trackLength, tracks);
+      stationList.add(get.get(0));
+      stationList.add(get.get(1));
+      /*
       int x = in.nextInt(); // (0, trackLength)
       int y1 = in.nextInt(); // <y2
       int y2 = in.nextInt(); // >y1
       stationList.add(new Dot(x, y1, 1));
       stationList.add(new Dot(x, y2, -1));
+       */
     }
     stationList.sort(Comparator.comparingInt(v -> v.y));
     stationList.add(new Dot(0, Integer.MAX_VALUE, 0));
@@ -281,5 +298,6 @@ public class Main {
         treeOnSegments.deleteBorder(toClear);
       }
     }
+    System.out.println(treeOnSegments.getMaxLength());
   }
 }
