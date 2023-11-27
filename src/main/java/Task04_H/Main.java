@@ -2,9 +2,10 @@ package Task04_H;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Random;
+import java.util.Stack;
+import java.util.stream.IntStream;
 
 public class Main {
   static class Parser {
@@ -127,6 +128,22 @@ public class Main {
           this.overlaps = overlaps;
           this.priority = random.nextLong();
         }
+
+        private Node(Node node) {
+          this.value = node.value;
+          this.left = getCopy(node.left);
+          this.right = getCopy(node.right);
+          this.size = node.size;
+          this.overlaps = node.overlaps;
+          this.priority = node.priority;
+        }
+
+        public static Node getCopy(Node node) {
+          if (node == null) {
+            return null;
+          }
+          return new Node(node);
+        }
       }
 
       private static class Pair {
@@ -139,37 +156,42 @@ public class Main {
         }
       }
 
-      public DecTree(DecTree one, DecTree two) {
-        if (one != null) {
-          for (Node node : one.getAllNodes()) {
-            insert(node.value, node.overlaps);
+      public DecTree(int[] arr, int l, int r) {
+        r = Math.min(arr.length - 1, r);
+        if (l > r) {
+          return;
+        }
+        Stack<Node> parentChain = new Stack<>();
+        this.root = new Node(arr[l]);
+        parentChain.push(this.root);
+        for (int i = l + 1; i <= r; i++) {
+          Node node = new Node(arr[i]);
+          Node lastNode = null;
+          while (!parentChain.empty() && node.priority > parentChain.peek().priority) {
+            lastNode = parentChain.pop();
+            updateSize(lastNode);
           }
-        }
-        if (two != null) {
-          for (Node node : two.getAllNodes()) {
-            insert(node.value, node.overlaps);
+          node.left = lastNode;
+          updateSize(node);
+          if (parentChain.empty()) {
+            root = node;
+          } else {
+            parentChain.peek().right = node;
+            updateSize(parentChain.peek());
           }
+          parentChain.push(node);
+        }
+        while (!parentChain.empty()) {
+          updateSize(parentChain.pop());
         }
       }
 
-      public DecTree(int value) {
-        root = new Node(value);
+      public DecTree() {
+        this.root = null;
       }
 
-      private List<Node> getAllNodes() {
-        return getAllNodes(root);
-      }
-
-      private List<Node> getAllNodes(Node node) {
-        List<Node> answer = new ArrayList<>();
-        if (node.left != null) {
-          answer.addAll(getAllNodes(node.left));
-        }
-        answer.add(node);
-        if (node.right != null) {
-          answer.addAll(getAllNodes(node.right));
-        }
-        return answer;
+      public DecTree(int val) {
+        this.root = new Node(val);
       }
 
       private Pair split(Node node, int key) {
@@ -319,9 +341,9 @@ public class Main {
         int mid = (left + right) / 2;
         build(2 * v + 1, left, mid);
         build(2 * v + 2, mid, right);
+        merge(left, mid, right);
 
-        // math function for this tree
-        tree[v] = new DecTree(tree[2 * v + 1], tree[2 * v + 2]);
+        tree[v] = new DecTree(arr, left, right - 1);
       }
     }
 
@@ -362,9 +384,58 @@ public class Main {
       tree[0].delete(from);
       tree[0].insert(value);
     }
+
+    private void merge(int l, int m, int r) {
+      r = Math.min(arr.length, r);
+      if (m >= arr.length) {
+        return;
+      }
+      int size1 = m - l;
+      int size2 = r - m;
+      int[] arr1 = Arrays.copyOfRange(arr, l, m); // l -> m - 1
+      int[] arr2 = Arrays.copyOfRange(arr, m, r); // m -> r - 1
+
+      int pointer1 = 0;
+      int pointer2 = 0;
+      int pointerMain = l;
+
+      while (pointer1 < size1 && pointer2 < size2) {
+        if (arr1[pointer1] <= arr2[pointer2]) {
+          arr[pointerMain] = arr1[pointer1];
+          pointer1++;
+        } else {
+          arr[pointerMain] = arr2[pointer2];
+          pointer2++;
+        }
+        pointerMain++;
+      }
+
+      while (pointer1 < size1) {
+        arr[pointerMain] = arr1[pointer1];
+        pointer1++;
+        pointerMain++;
+      }
+
+      while (pointer2 < size2) {
+        arr[pointerMain] = arr2[pointer2];
+        pointer2++;
+        pointerMain++;
+      }
+    }
+  }
+
+  private static Random random = new Random();
+
+  private static void test() {
+    while (true) {
+      int volume = random.nextInt(2, 100000);
+      SegmentTree tree = new SegmentTree(IntStream.range(1, volume).toArray());
+      System.out.println(volume);
+    }
   }
 
   public static void main(String[] args) {
+    // test();
     Parser in = new Parser(System.in);
     int volume = in.nextInt();
     int requests = in.nextInt();
