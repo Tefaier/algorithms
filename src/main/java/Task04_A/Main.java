@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.Objects;
 import java.util.Random;
 
-
 public class Main {
   static class Parser {
 
