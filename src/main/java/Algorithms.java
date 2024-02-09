@@ -19,7 +19,14 @@ class DFS<V, E extends GraphExplorer<V>> {
   }
 
   public void startDFS() {
-    dfs(explorer.getRandomUnexplored());
+    V vertex = explorer.getRandomUnexplored();
+    explorer.startExploring(vertex);
+    dfs(vertex);
+  }
+
+  public void startDFS(V vertex) {
+    explorer.startExploring(vertex);
+    dfs(vertex);
   }
 
   public void dfs(V vertex) {
@@ -35,7 +42,7 @@ class DFS<V, E extends GraphExplorer<V>> {
           explorer.exploreOld(next);
         }
         case Black -> {
-          explorer.exploreFinish(next);
+          explorer.exploreFinished(next);
         }
       }
     }
@@ -53,11 +60,13 @@ interface GraphExplorer<V> {
 
   public void setVertexStatus(V vertex, VertexStatus status);
 
+  public void startExploring(V vertex);
+
   public void startVertex(V vertex);
 
   public void exploreOld(V vertex);
 
-  public void exploreFinish(V vertex);
+  public void exploreFinished(V vertex);
 
   public void endVertex(V vertex);
 }
@@ -84,6 +93,11 @@ class ExplorerTiming<V> implements GraphExplorer<V> {
   }
 
   @Override
+  public void startExploring(V vertex) {
+
+  }
+
+  @Override
   public void startVertex(V vertex) {
 
   }
@@ -94,7 +108,7 @@ class ExplorerTiming<V> implements GraphExplorer<V> {
   }
 
   @Override
-  public void exploreFinish(V vertex) {
+  public void exploreFinished(V vertex) {
 
   }
 
