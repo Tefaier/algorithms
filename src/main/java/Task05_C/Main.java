@@ -1,8 +1,9 @@
-package Task05_B;
+package Task05_C;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.IntStream;
 
 public class Main {
@@ -223,7 +224,7 @@ public class Main {
   static record Edge(Integer from, Integer to) {
   }
 
-  static class ClustersSearch<V> implements GraphExplorer<V> {
+  static class TopolSortSearch<V> implements GraphExplorer<V> {
     public StringBuilder answer = new StringBuilder();
     public StringBuilder lastCluster;
     public int lastClusterSize = 0;
@@ -314,13 +315,12 @@ public class Main {
       edgesList.add(new Edge(in.nextInt() - 1, in.nextInt() - 1));
     }
     Graph<Integer> graph = new Graph<>(edgesList, vertexesList, false);
-    ClustersSearch<Integer> clustersSearch = new ClustersSearch<>();
-    DFS<Integer, ClustersSearch<Integer>> dfs = new DFS<>(graph, clustersSearch);
+    TopolSortSearch<Integer> topolSortSearch = new TopolSortSearch<>();
+    DFS<Integer, TopolSortSearch<Integer>> dfs = new DFS<>(graph, topolSortSearch);
     dfs.initExplorer();
-    while (!clustersSearch.isFinished()) {
+    while (!topolSortSearch.isFinished()) {
       dfs.startDFS();
     }
-    System.out.println(clustersSearch.clusterNumber);
-    System.out.println(clustersSearch.answer);
+
   }
 }
