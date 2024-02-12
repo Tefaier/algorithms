@@ -225,12 +225,10 @@ public class Main {
   }
 
   static class TopolSortSearch<V> implements GraphExplorer<V> {
-    public StringBuilder answer = new StringBuilder();
-    public StringBuilder lastCluster;
-    public int lastClusterSize = 0;
-    public int clusterNumber = 0;
+    public List<Integer> outOrder = new ArrayList<>();
 
     private Graph<V> graph;
+    private boolean cycleDetected = false;
 
     // state of each index
     private List<VertexStatus> vertexStatuses = new ArrayList<>();
@@ -268,25 +266,22 @@ public class Main {
 
     @Override
     public void startExploring(Integer vertex) {
-      clusterNumber++;
-      lastClusterSize = 0;
-      lastCluster = new StringBuilder();
+      return;
     }
 
     @Override
     public void finishExploring(Integer vertex) {
-      answer.append(lastClusterSize).append('\n').append(lastCluster).append('\n');
+      return;
     }
 
     @Override
     public void exploreWhite(Integer vertex) {
-      lastClusterSize++;
-      lastCluster.append(graph.vertexes.get(vertex)).append(" ");
+      return;
     }
 
     @Override
     public void exploreGray(Integer vertex) {
-      return;
+      cycleDetected = true;
     }
 
     @Override
@@ -296,12 +291,15 @@ public class Main {
 
     @Override
     public void endVertex(Integer vertex) {
-      return;
+      outOrder.add(vertex);
     }
 
     @Override
     public boolean isFinished() {
-      return lastCheckedIndex == vertexStatuses.size() - 1;
+      return
+          (lastCheckedIndex == vertexStatuses.size() - 1 &&
+              vertexStatuses.get(lastCheckedIndex) == VertexStatus.Black) ||
+              cycleDetected;
     }
   }
 
@@ -314,13 +312,19 @@ public class Main {
     for (int i = 0; i < edges; i++) {
       edgesList.add(new Edge(in.nextInt() - 1, in.nextInt() - 1));
     }
-    Graph<Integer> graph = new Graph<>(edgesList, vertexesList, false);
+    Graph<Integer> graph = new Graph<>(edgesList, vertexesList, true);
     TopolSortSearch<Integer> topolSortSearch = new TopolSortSearch<>();
     DFS<Integer, TopolSortSearch<Integer>> dfs = new DFS<>(graph, topolSortSearch);
     dfs.initExplorer();
     while (!topolSortSearch.isFinished()) {
       dfs.startDFS();
     }
-
+    if (topolSortSearch.cycleDetected) {
+      System.out.print(-1);
+      return;
+    }
+    for (int i = topolSortSearch.outOrder.size() - 1; i >= 0; i--) {
+      System.out.print(graph.vertexes.get(topolSortSearch.outOrder.get(i)) + " ");
+    }
   }
 }
