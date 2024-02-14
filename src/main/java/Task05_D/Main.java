@@ -292,7 +292,8 @@ public class Main {
 
     @Override
     public void startExploring(Short vertex) {
-      visitStack.add(vertex);
+      exploreWhite(vertex);
+      setVertexStatus(vertex, VertexStatus.Gray);
     }
 
     @Override
@@ -351,7 +352,7 @@ public class Main {
       for (short i = (short) (lastCheckedIndex - 1); i >= 0; i--) {
         if (vertexStatuses.get(toGoOrder.get(i)) == VertexStatus.White) {
           lastCheckedIndex = i;
-          return i;
+          return toGoOrder.get(i);
         }
       }
       lastCheckedIndex = (short) (0);
@@ -381,8 +382,9 @@ public class Main {
 
     @Override
     public void startExploring(Short vertex) {
-      visitStack.add(vertex);
       ++currentComponent;
+      exploreWhite(vertex);
+      setVertexStatus(vertex, VertexStatus.Gray);
     }
 
     @Override
