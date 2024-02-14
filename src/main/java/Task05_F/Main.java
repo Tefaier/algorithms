@@ -118,9 +118,6 @@ public class Main {
       this.checkMemory = new short[graph.getSize()];
       Arrays.fill(this.checkMemory, (short) 0);
       explorer.prepareGraph(graph);
-
-      // just appeared
-      graph.checkMemory = this.checkMemory;
     }
 
     public void startDFS() {
@@ -171,11 +168,6 @@ public class Main {
 
   static class Graph {
     public List<List<Short>> connectionList = new ArrayList<>();
-    // vertexes serves as a backup from index to original information
-    // however edges must use indexes of vertexes
-    public short[] checkMemory;
-    private List<List<Integer>> edgesMemory = new ArrayList<>();
-    private int counter = 0;
     private short size;
 
     public Graph() {
@@ -186,7 +178,6 @@ public class Main {
       this.size = size;
       for (int i = 0; i < size; i++) {
         connectionList.add(new ArrayList<>());
-        edgesMemory.add(new ArrayList<>());
       }
     }
 
@@ -194,28 +185,20 @@ public class Main {
       return size;
     }
 
-    // use checkMemory - returns the edge that was looked last in the dfs from some vertex
-    public Integer getEdgeIndex(short from) {
-      return edgesMemory.get(from).get(checkMemory[from] - 1);
-    }
-
     public List<Short> getConnected(Short vertex) {
       return connectionList.get(vertex);
     }
 
     public void addEdge(Edge edge, boolean orientated) {
-      ++counter;
       connectionList.get(edge.from()).add(edge.to());
-      edgesMemory.get(edge.from()).add(counter);
       if (!orientated) {
         connectionList.get(edge.to()).add(edge.from());
-        edgesMemory.get(edge.to()).add(counter);
       }
     }
   }
 
   static class articExplorer {
-    public List<Short> artPoints = new ArrayList<>();
+    public Set<Short> artPoints = new HashSet<>();
     //private Set<Integer> bridgesBlackList = new HashSet<>();
 
     private Graph graph;
@@ -280,7 +263,7 @@ public class Main {
       setVertexStatus(vertex, VertexStatus.Gray);
 
       if (sourceVert.equals(getActiveVert()) && secondWhite) {
-        artPoints.add(sourceVert);
+        artPoints.add((short) (sourceVert + 1));
       }
       visitStack.add(vertex);
 
@@ -290,23 +273,7 @@ public class Main {
     }
 
     public void exploreGray(Short vertex) {
-      /*
-      if (wentBack(vertex)) {
-        incrementStatus();
-        return;
-      }
-
-       */
       upTime[getActiveVert()] = (short) Math.min(upTime[getActiveVert()], inTime[vertex]);
-    }
-
-    private boolean wentBack(Short vertex) {
-      return
-          visitStack.size() > 1 &&
-              Objects.equals(
-                  vertex,
-                  visitStack.elementAt(visitStack.size() - 2)
-              );
     }
 
     public void exploreBlack(Short vertex) {
@@ -325,7 +292,7 @@ public class Main {
         secondWhite = true;
       } else if (upTime[vertex] >= inTime[active]) {
         // back not to source and passed
-        artPoints.add(vertex);
+        artPoints.add((short) (active + 1));
       }
     }
 
@@ -348,6 +315,6 @@ public class Main {
       dfs.startDFS();
     }
     System.out.println(articExplorer.artPoints.size());
-    System.out.print(articExplorer.artPoints.stream().distinct().sorted().map(Objects::toString).collect(Collectors.joining(" ")));
+    System.out.print(articExplorer.artPoints.stream().sorted().map(Objects::toString).collect(Collectors.joining("\n")));
   }
 }
