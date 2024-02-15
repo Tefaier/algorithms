@@ -273,7 +273,14 @@ public class Main {
     }
 
     public void exploreGray(Short vertex) {
+      if (wentBack(vertex)) {
+        return;
+      }
       upTime[getActiveVert()] = (short) Math.min(upTime[getActiveVert()], inTime[vertex]);
+    }
+
+    private boolean wentBack(Short vertex) {
+      return visitStack.size() > 1 && visitStack.get(visitStack.size() - 2).equals(vertex);
     }
 
     public void exploreBlack(Short vertex) {
@@ -287,6 +294,7 @@ public class Main {
       if (active == null) {
         return;
       }
+      upTime[active] = (short) Math.min(upTime[active], upTime[vertex]);
       if (active.equals(sourceVert)) {
         // back to source
         secondWhite = true;
