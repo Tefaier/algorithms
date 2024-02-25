@@ -104,11 +104,11 @@ public class Main {
 
   static enum VertexStatus {White, Gray, Black}
 
-  static class DFS<V, E extends GraphExplorer<V>> {
+  static class DFS<V> {
     public final Graph<V> graph;
-    public final E explorer;
+    public final ClustersSearch<V> explorer;
 
-    public DFS(Graph<V> graph, E graphExplorer) {
+    public DFS(Graph<V> graph, ClustersSearch<V> graphExplorer) {
       this.graph = graph;
       this.explorer = graphExplorer;
     }
@@ -122,12 +122,6 @@ public class Main {
       if (vertex == null) {
         return;
       }
-      explorer.startExploring(vertex);
-      dfs(vertex);
-      explorer.finishExploring(vertex);
-    }
-
-    public void startDFS(Integer vertex) {
       explorer.startExploring(vertex);
       dfs(vertex);
       explorer.finishExploring(vertex);
@@ -157,30 +151,6 @@ public class Main {
     }
   }
 
-  static interface GraphExplorer<V> {
-    public Integer getRandomUnexplored();
-
-    public void prepareGraph(Graph<V> graph);
-
-    public VertexStatus getVertexStatus(Integer vertex);
-
-    public void setVertexStatus(Integer vertex, VertexStatus status);
-
-    public void startExploring(Integer vertex);
-
-    public void finishExploring(Integer vertex);
-
-    public void exploreWhite(Integer vertex);
-
-    public void exploreGray(Integer vertex);
-
-    public void exploreBlack(Integer vertex);
-
-    public void endVertex(Integer vertex);
-
-    public boolean isFinished();
-  }
-
   static class Graph<V> {
     public List<List<Integer>> connectionList = new ArrayList<>();
     // vertexes serves as a backup from index to original information
@@ -207,23 +177,12 @@ public class Main {
     public List<Integer> getConnected(Integer vertex) {
       return connectionList.get(vertex);
     }
-
-    public void addVert(V vertex) {
-      vertexes.add(vertex);
-    }
-
-    public void addEdge(Edge edge, boolean orientated) {
-      connectionList.get(edge.from()).add(edge.to());
-      if (!orientated) {
-        connectionList.get(edge.to()).add(edge.from());
-      }
-    }
   }
 
   static record Edge(Integer from, Integer to) {
   }
 
-  static class ClustersSearch<V> implements GraphExplorer<V> {
+  static class ClustersSearch<V> {
     public StringBuilder answer = new StringBuilder();
     public StringBuilder lastCluster;
     public int lastClusterSize = 0;
@@ -235,7 +194,6 @@ public class Main {
     private List<VertexStatus> vertexStatuses = new ArrayList<>();
     private Integer lastCheckedIndex = -1;
 
-    @Override
     public Integer getRandomUnexplored() {
       for (int i = lastCheckedIndex + 1; i < vertexStatuses.size(); i++) {
         if (vertexStatuses.get(i) == VertexStatus.White) {
@@ -247,7 +205,6 @@ public class Main {
       return null;
     }
 
-    @Override
     public void prepareGraph(Graph<V> graph) {
       this.graph = graph;
       for (int i = 0; i < graph.vertexes.size(); i++) {
@@ -255,50 +212,41 @@ public class Main {
       }
     }
 
-    @Override
     public VertexStatus getVertexStatus(Integer vertex) {
       return vertexStatuses.get(vertex);
     }
 
-    @Override
     public void setVertexStatus(Integer vertex, VertexStatus status) {
       vertexStatuses.set(vertex, status);
     }
 
-    @Override
     public void startExploring(Integer vertex) {
       clusterNumber++;
       lastClusterSize = 0;
       lastCluster = new StringBuilder();
     }
 
-    @Override
     public void finishExploring(Integer vertex) {
       answer.append(lastClusterSize).append('\n').append(lastCluster).append('\n');
     }
 
-    @Override
     public void exploreWhite(Integer vertex) {
       lastClusterSize++;
       lastCluster.append(graph.vertexes.get(vertex)).append(" ");
     }
 
-    @Override
     public void exploreGray(Integer vertex) {
       return;
     }
 
-    @Override
     public void exploreBlack(Integer vertex) {
       return;
     }
 
-    @Override
     public void endVertex(Integer vertex) {
       return;
     }
 
-    @Override
     public boolean isFinished() {
       return lastCheckedIndex == vertexStatuses.size() - 1;
     }
@@ -315,7 +263,7 @@ public class Main {
     }
     Graph<Integer> graph = new Graph<>(edgesList, vertexesList, false);
     ClustersSearch<Integer> clustersSearch = new ClustersSearch<>();
-    DFS<Integer, ClustersSearch<Integer>> dfs = new DFS<>(graph, clustersSearch);
+    DFS<Integer> dfs = new DFS<>(graph, clustersSearch);
     dfs.initExplorer();
     while (!clustersSearch.isFinished()) {
       dfs.startDFS();

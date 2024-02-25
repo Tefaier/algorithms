@@ -220,10 +220,6 @@ public class Main {
       return connectionList.get(vertex);
     }
 
-    public void addVert(V vertex) {
-      vertexes.add(vertex);
-    }
-
     public void addEdge(Edge edge, boolean orientated) {
       connectionList.get(edge.from()).add(edge.to());
       if (!orientated) {
