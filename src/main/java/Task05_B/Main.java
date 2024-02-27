@@ -241,6 +241,7 @@ public class Main {
     public int clusterNumber = 0;
 
     private Graph<V, E> graph;
+    private Stack<Integer> visitStack = new Stack<>();
 
     // state of each index
     private List<VertexStatus> vertexStatuses = new ArrayList<>();
@@ -248,7 +249,7 @@ public class Main {
 
     @Override
     public Stack<Integer> getVisitStack() {
-      return null;
+      return visitStack;
     }
 
     @Override
@@ -283,9 +284,11 @@ public class Main {
 
     @Override
     public void startExploring(Integer vertex) {
+      setVertexStatus(vertex, VertexStatus.Gray);
       clusterNumber++;
       lastClusterSize = 0;
       lastCluster = new StringBuilder();
+      exploreWhite(vertex);
     }
 
     @Override
@@ -295,6 +298,7 @@ public class Main {
 
     @Override
     public void exploreWhite(Integer vertex) {
+      visitStack.add(vertex);
       lastClusterSize++;
       lastCluster.append(graph.vertexes.get(vertex)).append(" ");
     }
@@ -311,7 +315,7 @@ public class Main {
 
     @Override
     public void endVertex(Integer vertex) {
-      return;
+      visitStack.pop();
     }
 
     @Override
