@@ -105,12 +105,12 @@ public class Main {
 
   static enum VertexStatus {White, Gray, Black}
 
-  static class DFS<V, E extends GraphExplorer<V>> {
-    public final Graph<V> graph;
-    public final E explorer;
+  static class DFS<V, E extends Edge, G extends GraphExplorer<V, E>> {
+    public final Graph<V, E> graph;
+    public final G explorer;
     private int[] checkMemory;
 
-    public DFS(Graph<V> graph, E graphExplorer) {
+    public DFS(Graph<V, E> graph, G graphExplorer) {
       this.graph = graph;
       this.explorer = graphExplorer;
       this.checkMemory = new int[graph.vertexes.size()];
@@ -167,12 +167,12 @@ public class Main {
     }
   }
 
-  static interface GraphExplorer<V> {
+  static interface GraphExplorer<V, E extends Edge> {
     public Stack<Short> getVisitStack();
 
     public Short getRandomUnexplored();
 
-    public void prepareGraph(Graph<V> graph);
+    public void prepareGraph(Graph<V, E> graph);
 
     public VertexStatus getVertexStatus(Short vertex);
 
@@ -193,24 +193,26 @@ public class Main {
     public boolean isFinished();
   }
 
-  static class Graph<V> {
+  static class Graph<V, E extends Edge> {
     public List<List<Short>> connectionList = new ArrayList<>();
     // vertexes serves as a backup from index to original information
     // however edges must use indexes of vertexes
     public List<V> vertexes;
+    public List<E> edges;
 
     public Graph() {
 
     }
 
-    public Graph(List<Edge> edges, List<V> vertexes, boolean orientated) {
+    public Graph(List<E> edges, List<V> vertexes) {
       this.vertexes = vertexes;
+      this.edges = edges;
       for (int i = 0; i < vertexes.size(); i++) {
         connectionList.add(new ArrayList<>());
       }
       for (Edge edge : edges) {
         connectionList.get(edge.from()).add(edge.to());
-        if (!orientated) {
+        if (!edge.orientated()) {
           connectionList.get(edge.to()).add(edge.from());
         }
       }
@@ -220,31 +222,39 @@ public class Main {
       return connectionList.get(vertex);
     }
 
-    public void addEdge(Edge edge, boolean orientated) {
+    public int getVertexCount() {
+      return vertexes.size();
+    }
+
+    public int getEdgesCount() {
+      return edges.size();
+    }
+
+    public void addEdge(Edge edge) {
       connectionList.get(edge.from()).add(edge.to());
-      if (!orientated) {
+      if (!edge.orientated()) {
         connectionList.get(edge.to()).add(edge.from());
       }
     }
 
-    public Graph<V> getReversed() {
-      Graph<V> newGraph = new Graph<V>(new ArrayList<>(), vertexes, true);
+    public Graph<V, E> getReversed() {
+      Graph<V, E> newGraph = new Graph<V, E>(new ArrayList<>(), vertexes);
       for (short i = 0; i < connectionList.size(); i++) {
         for (Short index : connectionList.get(i)) {
-          newGraph.addEdge(new Edge(index, i), true);
+          newGraph.addEdge(new Edge(index, i, true));
         }
       }
       return newGraph;
     }
   }
 
-  static record Edge(Short from, Short to) {
+  static record Edge(Short from, Short to, boolean orientated) {
   }
 
-  static class TopolSortSearch<V> implements GraphExplorer<V> {
+  static class TopolSortSearch<V, E extends Edge> implements GraphExplorer<V, E> {
     public List<Short> outOrder = new ArrayList<>();
 
-    private Graph<V> graph;
+    private Graph<V, E> graph;
     private Stack<Short> visitStack = new Stack<>();
 
     // state of each index
@@ -269,7 +279,7 @@ public class Main {
     }
 
     @Override
-    public void prepareGraph(Graph<V> graph) {
+    public void prepareGraph(Graph<V, E> graph) {
       this.graph = graph;
       for (int i = 0; i < graph.vertexes.size(); i++) {
         vertexStatuses.add(VertexStatus.White);
@@ -326,11 +336,11 @@ public class Main {
     }
   }
 
-  static class ConnectedSearch<V> implements GraphExplorer<V> {
+  static class ConnectedSearch<V, E extends Edge> implements GraphExplorer<V, E> {
     public Short[] vertComponent;
     public List<Short> toGoOrder;
 
-    private Graph<V> graph;
+    private Graph<V, E> graph;
     private Stack<Short> visitStack = new Stack<>();
 
     // state of each index
@@ -356,7 +366,7 @@ public class Main {
     }
 
     @Override
-    public void prepareGraph(Graph<V> graph) {
+    public void prepareGraph(Graph<V, E> graph) {
       this.graph = graph;
       for (int i = 0; i < graph.vertexes.size(); i++) {
         vertexStatuses.add(VertexStatus.White);
@@ -424,19 +434,19 @@ public class Main {
     List<Short> vertexesList = IntStream.rangeClosed(1, vertexes).boxed().map(Integer::shortValue).toList();
     List<Edge> edgesList = new ArrayList<>();
     for (int i = 0; i < edges; i++) {
-      edgesList.add(new Edge((short) (in.nextInt() - 1), (short) (in.nextInt() - 1)));
+      edgesList.add(new Edge((short) (in.nextInt() - 1), (short) (in.nextInt() - 1), true));
     }
-    Graph<Short> graph = new Graph<>(edgesList, vertexesList, true);
-    TopolSortSearch<Short> topolSortSearch = new TopolSortSearch<>();
-    DFS<Short, TopolSortSearch<Short>> dfs = new DFS<>(graph, topolSortSearch);
+    Graph<Short, Edge> graph = new Graph<>(edgesList, vertexesList);
+    TopolSortSearch<Short, Edge> topolSortSearch = new TopolSortSearch<>();
+    DFS<Short, Edge, TopolSortSearch<Short, Edge>> dfs = new DFS<>(graph, topolSortSearch);
     dfs.initExplorer();
     while (!topolSortSearch.isFinished()) {
       dfs.startDFS();
     }
-    Graph<Short> graphReversed = graph.getReversed();
-    ConnectedSearch<Short> connectedSearch = new ConnectedSearch<>();
+    Graph<Short, Edge> graphReversed = graph.getReversed();
+    ConnectedSearch<Short, Edge> connectedSearch = new ConnectedSearch<>();
     connectedSearch.toGoOrder = topolSortSearch.outOrder;
-    DFS<Short, ConnectedSearch<Short>> dfs2 = new DFS<>(graphReversed, connectedSearch);
+    DFS<Short, Edge, ConnectedSearch<Short, Edge>> dfs2 = new DFS<>(graphReversed, connectedSearch);
     dfs2.initExplorer();
     while (!connectedSearch.isFinished()) {
       dfs2.startDFS();
