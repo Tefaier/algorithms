@@ -132,7 +132,7 @@ public class Main {
   private static Parser in = new Parser(System.in);
   private static int infinity = 2009000999;
 
-  private static int[] deixtra(int start, Graph graph) {
+  private static int[] fordBelman(int start, Graph graph) {
     int[] distances = new int[graph.getVertexCount()];
     Arrays.fill(distances, infinity);
     distances[start] = 0;
@@ -168,7 +168,7 @@ public class Main {
       for (int j = 0; j < edgeNum; j++) {
         graph.addEdge(new Edge(in.nextInt(), in.nextInt(), in.nextInt()));
       }
-      System.out.println(Arrays.stream(deixtra(in.nextInt(), graph)).mapToObj(Integer::toString).collect(Collectors.joining(" ")));
+      System.out.println(Arrays.stream(fordBelman(in.nextInt(), graph)).mapToObj(Integer::toString).collect(Collectors.joining(" ")));
     }
   }
 }
