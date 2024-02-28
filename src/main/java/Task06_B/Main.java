@@ -2,6 +2,8 @@ package Task06_B;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 class Parser {
 
@@ -99,8 +101,47 @@ class Parser {
   }
 }
 
+record Edge(int from, int to, int weight) {
+}
+
+class Graph {
+  private int vertexCount;
+  private ArrayList<Edge> edges;
+
+  public Graph(int vertexCount) {
+    this.vertexCount = vertexCount;
+    edges = new ArrayList<>();
+  }
+
+  public int getVertexCount() {
+    return vertexCount;
+  }
+
+  public void addEdge(Edge edge) {
+    edges.add(edge);
+  }
+
+  public List<Edge> getEdges() {
+    return edges;
+  }
+}
+
 public class Main {
+  private static Parser in = new Parser(System.in);
+
   public static void main(String[] args) {
-    Parser in = new Parser(System.in);
+    int roomNum = in.nextInt();
+    int edgeNum = in.nextInt();
+    int virusesNum = in.nextInt();
+    int[] viruses = new int[virusesNum];
+    for (int i = 0; i < virusesNum; i++) {
+      viruses[i] = in.nextInt();
+    }
+    Graph graph = new Graph(roomNum);
+    for (int j = 0; j < edgeNum; j++) {
+      graph.addEdge(new Edge(in.nextInt(), in.nextInt(), in.nextInt()));
+    }
+    int start = in.nextInt();
+    int target = in.nextInt();
   }
 }
