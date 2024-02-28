@@ -147,48 +147,53 @@ public class Main {
     public int compareTo(Object o) {
       if (o instanceof Unit) {
         long difference = distance - ((Unit) o).distance;
-        return (difference == 0) ? (isAVirus ? -1 : 1) : (int) difference;
+        if (difference != 0) return (int) difference;
+        return isAVirus == ((Unit) o).isAVirus ? 0 : (isAVirus ? -1 : 1);
       }
       return 0;
     }
   }
 
   private static long tryReachWithDeixtra(int start, int target, Graph graph, List<Integer> virusSources) {
-    if (start == target) return 0;
     if (virusSources.contains(start)) return -1;
+    if (start == target) return 0;
     long[] distances = new long[graph.getVertexCount()];
-    PriorityQueue<Unit> queue = new PriorityQueue<>();
     Arrays.fill(distances, Long.MAX_VALUE);
+    PriorityQueue<Unit> queue = new PriorityQueue<>();
     distances[start] = 0;
     queue.add(new Unit(start, 0, false));
     virusSources.forEach(source -> {
       distances[source] = 0;
       queue.add(new Unit(source, 0, true));
     });
-    Set<Integer> checked = new HashSet<>();
-    int aliveCounter = 1;
     // rules
     // what is known - who came where first
     // if only viruses in the queue - break
     // if target reached - break
 
+    Set<Integer> checked = new HashSet<>();
+    int aliveCounter = 1;
     Unit unit;
     while ((unit = queue.poll()) != null) {
       if (!unit.isAVirus) aliveCounter--;
       if (checked.contains(unit.vertex)) continue;
       checked.add(unit.vertex);
+
+      if (unit.vertex == target) return unit.isAVirus ? -1 : unit.distance;
+
       for (Edge edge : graph.getEdges(unit.vertex)) {
-        int to = edge.to() == unit.vertex ? edge.from() : edge.to();
+        int to = (edge.to() == unit.vertex) ? edge.from() : edge.to();
         long newDist = distances[unit.vertex] + edge.weight();
         if (newDist < distances[to]) {
           distances[to] = newDist;
-          if (to == target) return unit.isAVirus ? -1 : newDist;
           queue.add(new Unit(to, newDist, unit.isAVirus));
           if (!unit.isAVirus) aliveCounter++;
         }
       }
+
       if (aliveCounter == 0) return -1;
     }
+
     return -1;
   }
 
