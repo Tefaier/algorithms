@@ -2,8 +2,7 @@ package Task06_B;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 class Parser {
 
@@ -106,11 +105,14 @@ record Edge(int from, int to, int weight) {
 
 class Graph {
   private int vertexCount;
-  private ArrayList<Edge> edges;
+  private ArrayList<Edge>[] connectionList;
 
   public Graph(int vertexCount) {
     this.vertexCount = vertexCount;
-    edges = new ArrayList<>();
+    connectionList = new ArrayList[vertexCount];
+    for (int i = 0; i < vertexCount; i++) {
+      connectionList[i] = new ArrayList<>();
+    }
   }
 
   public int getVertexCount() {
@@ -118,30 +120,92 @@ class Graph {
   }
 
   public void addEdge(Edge edge) {
-    edges.add(edge);
+    connectionList[edge.from()].add(edge);
+    connectionList[edge.to()].add(edge);
   }
 
-  public List<Edge> getEdges() {
-    return edges;
+  public List<Edge> getEdges(int from) {
+    return connectionList[from];
   }
 }
 
 public class Main {
   private static Parser in = new Parser(System.in);
 
+  static class Unit implements Comparable {
+    public int vertex;
+    public long distance;
+    public boolean isAVirus;
+
+    public Unit(int vertex, long distance, boolean isAVirus) {
+      this.vertex = vertex;
+      this.distance = distance;
+      this.isAVirus = isAVirus;
+    }
+
+    @Override
+    public int compareTo(Object o) {
+      if (o instanceof Unit) {
+        long difference = distance - ((Unit) o).distance;
+        return (difference == 0) ? (isAVirus ? -1 : 1) : (int) difference;
+      }
+      return 0;
+    }
+  }
+
+  private static long tryReachWithDeixtra(int start, int target, Graph graph, List<Integer> virusSources) {
+    if (start == target) return 0;
+    if (virusSources.contains(start)) return -1;
+    long[] distances = new long[graph.getVertexCount()];
+    PriorityQueue<Unit> queue = new PriorityQueue<>();
+    Arrays.fill(distances, Long.MAX_VALUE);
+    distances[start] = 0;
+    queue.add(new Unit(start, 0, false));
+    virusSources.forEach(source -> {
+      distances[source] = 0;
+      queue.add(new Unit(source, 0, true));
+    });
+    Set<Integer> checked = new HashSet<>();
+    int aliveCounter = 1;
+    // rules
+    // what is known - who came where first
+    // if only viruses in the queue - break
+    // if target reached - break
+
+    Unit unit;
+    while ((unit = queue.poll()) != null) {
+      if (!unit.isAVirus) aliveCounter--;
+      if (checked.contains(unit.vertex)) continue;
+      checked.add(unit.vertex);
+      for (Edge edge : graph.getEdges(unit.vertex)) {
+        int to = edge.to() == unit.vertex ? edge.from() : edge.to();
+        long newDist = distances[unit.vertex] + edge.weight();
+        if (newDist < distances[to]) {
+          distances[to] = newDist;
+          if (to == target) return unit.isAVirus ? -1 : newDist;
+          queue.add(new Unit(to, newDist, unit.isAVirus));
+          if (!unit.isAVirus) aliveCounter++;
+        }
+      }
+      if (aliveCounter == 0) return -1;
+    }
+    return -1;
+  }
+
   public static void main(String[] args) {
     int roomNum = in.nextInt();
     int edgeNum = in.nextInt();
     int virusesNum = in.nextInt();
-    int[] viruses = new int[virusesNum];
+    List<Integer> viruses = new ArrayList<>();
     for (int i = 0; i < virusesNum; i++) {
-      viruses[i] = in.nextInt();
+      viruses.add(in.nextInt() - 1);
     }
     Graph graph = new Graph(roomNum);
     for (int j = 0; j < edgeNum; j++) {
-      graph.addEdge(new Edge(in.nextInt(), in.nextInt(), in.nextInt()));
+      graph.addEdge(new Edge(in.nextInt() - 1, in.nextInt() - 1, in.nextInt()));
     }
-    int start = in.nextInt();
-    int target = in.nextInt();
+    int start = in.nextInt() - 1;
+    int target = in.nextInt() - 1;
+    System.out.println(tryReachWithDeixtra(start, target, graph, viruses));
   }
 }
