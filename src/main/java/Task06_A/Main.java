@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.stream.Collectors;
 
 class Parser {
 
@@ -139,8 +140,41 @@ public class Main {
   private static int[] deixtra(int start, Graph graph) {
     int[] distances = new int[graph.getVertexCount()];
     Arrays.fill(distances, infinity);
-    PriorityQueue<Integer> queue = new PriorityQueue<>();
+    distances[start] = 0;
 
+    class Unit implements Comparable {
+      public int vertex;
+
+      public Unit(int vertex) {
+        this.vertex = vertex;
+      }
+
+      @Override
+      public int compareTo(Object o) {
+        if (o instanceof Unit) {
+          return distances[vertex] - distances[((Unit) o).vertex];
+        }
+        return 0;
+      }
+    }
+
+    PriorityQueue<Unit> queue = new PriorityQueue<>();
+    queue.add(new Unit(start));
+
+    Unit unit;
+    while ((unit = queue.poll()) != null) {
+      for (Edge edge : graph.getEdges(unit.vertex)) {
+        int to = edge.to();
+        if (to == unit.vertex) {
+          to = edge.from();
+        }
+        int newDist = distances[unit.vertex] + edge.weight();
+        if (newDist < distances[to]) {
+          distances[to] = newDist;
+          queue.add(new Unit(to));
+        }
+      }
+    }
     return distances;
   }
 
@@ -153,7 +187,7 @@ public class Main {
       for (int j = 0; j < edgeNum; j++) {
         graph.addEdge(new Edge(in.nextInt(), in.nextInt(), in.nextInt()));
       }
-      deixtra(in.nextInt(), graph);
+      System.out.println(Arrays.stream(deixtra(in.nextInt(), graph)).mapToObj(Integer::toString).collect(Collectors.joining(" ")));
     }
   }
 }
