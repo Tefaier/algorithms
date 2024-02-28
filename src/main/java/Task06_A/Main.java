@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.stream.Collectors;
 
 class Parser {
@@ -109,14 +108,11 @@ record Edge(int from, int to, int weight) {
 
 class Graph {
   private int vertexCount;
-  private ArrayList<Edge>[] connectionList;
+  private ArrayList<Edge> edges;
 
   public Graph(int vertexCount) {
     this.vertexCount = vertexCount;
-    connectionList = new ArrayList[vertexCount];
-    for (int i = 0; i < vertexCount; i++) {
-      connectionList[i] = new ArrayList<>();
-    }
+    edges = new ArrayList<>();
   }
 
   public int getVertexCount() {
@@ -124,12 +120,11 @@ class Graph {
   }
 
   public void addEdge(Edge edge) {
-    connectionList[edge.from()].add(edge);
-    connectionList[edge.to()].add(edge);
+    edges.add(edge);
   }
 
-  public List<Edge> getEdges(int from) {
-    return connectionList[from];
+  public List<Edge> getEdges() {
+    return edges;
   }
 }
 
@@ -142,39 +137,25 @@ public class Main {
     Arrays.fill(distances, infinity);
     distances[start] = 0;
 
-    class Unit implements Comparable {
-      public int vertex;
-
-      public Unit(int vertex) {
-        this.vertex = vertex;
-      }
-
-      @Override
-      public int compareTo(Object o) {
-        if (o instanceof Unit) {
-          return distances[vertex] - distances[((Unit) o).vertex];
+    for (int k = 0; k < graph.getVertexCount(); k++) {
+      boolean relaxed = false;
+      for (Edge edge : graph.getEdges()) {
+        if (distances[edge.from()] != infinity) {
+          if (distances[edge.to()] > distances[edge.from()] + edge.weight()) {
+            distances[edge.to()] = distances[edge.from()] + edge.weight();
+            relaxed = true;
+          }
         }
-        return 0;
+        if (distances[edge.to()] != infinity) {
+          if (distances[edge.from()] > distances[edge.to()] + edge.weight()) {
+            distances[edge.from()] = distances[edge.to()] + edge.weight();
+            relaxed = true;
+          }
+        }
       }
+      if (!relaxed) break;
     }
 
-    PriorityQueue<Unit> queue = new PriorityQueue<>();
-    queue.add(new Unit(start));
-
-    Unit unit;
-    while ((unit = queue.poll()) != null) {
-      for (Edge edge : graph.getEdges(unit.vertex)) {
-        int to = edge.to();
-        if (to == unit.vertex) {
-          to = edge.from();
-        }
-        int newDist = distances[unit.vertex] + edge.weight();
-        if (newDist < distances[to]) {
-          distances[to] = newDist;
-          queue.add(new Unit(to));
-        }
-      }
-    }
     return distances;
   }
 
