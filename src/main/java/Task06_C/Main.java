@@ -2,6 +2,7 @@ package Task06_C;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.util.*;
 
 class Parser {
 
@@ -99,8 +100,107 @@ class Parser {
   }
 }
 
+record Edge(int from, int to, int time, int price) {
+}
+
+class Graph {
+  private int vertexCount;
+  private ArrayList<Edge>[] connectionList;
+
+  public Graph(int vertexCount) {
+    this.vertexCount = vertexCount;
+    connectionList = new ArrayList[vertexCount];
+    for (int i = 0; i < vertexCount; i++) {
+      connectionList[i] = new ArrayList<>();
+    }
+  }
+
+  public int getVertexCount() {
+    return vertexCount;
+  }
+
+  public void addEdge(Edge edge) {
+    connectionList[edge.from()].add(edge);
+    connectionList[edge.to()].add(edge);
+  }
+
+  public List<Edge> getEdges(int from) {
+    return connectionList[from];
+  }
+}
+
 public class Main {
+  private static Parser in = new Parser(System.in);
+  private static int inf = Integer.MAX_VALUE;
+
+  static class Unit implements Comparable {
+    public int source;
+    public int vertex;
+    public int time;
+    public int price;
+
+    public Unit(int source, int vertex, int time, int price) {
+      this.source = source;
+      this.vertex = vertex;
+      this.time = time;
+      this.price = price;
+    }
+
+    @Override
+    public int compareTo(Object o) {
+      if (o instanceof Unit) {
+        int difference = time - ((Unit) o).time;
+        return difference;
+      }
+      return 0;
+    }
+  }
+
+  private static long tryReachMinCostTimeLimit(int start, int target, Graph graph, int timeLimit) {
+    if (start == target) return 0;
+
+    int[] price = new int[graph.getVertexCount()];
+    Arrays.fill(price, inf);
+    int[] parents = new int[graph.getVertexCount()];
+    Arrays.fill(parents, -1);
+    price[start] = 0;
+
+    PriorityQueue<Unit> queue = new PriorityQueue<>();
+    queue.add(new Unit(-1, start, 0, 0));
+    // rules
+    // target is to minimise cost
+    // but there is also limit on time
+
+    Unit unit;
+    while ((unit = queue.poll()) != null) {
+      // because inf is MAX_VALUE
+      if (unit.price >= price[unit.vertex]) continue;
+      // queue is sorted using time, so it means that we came to the vertex with higher price lower time
+
+      price[unit.vertex] = unit.price;
+      parents[unit.vertex] = unit.source;
+
+      for (Edge edge : graph.getEdges(unit.vertex)) {
+        if (unit.time + edge.time() <= timeLimit) {
+          int to = (edge.to() == unit.vertex) ? edge.from() : edge.to();
+          queue.add(new Unit(unit.vertex, to, unit.time + edge.time(), unit.price + edge.price()));
+        }
+      }
+    }
+
+    return -1;
+  }
+
   public static void main(String[] args) {
-    Parser in = new Parser(System.in);
+    int roomNum = in.nextInt();
+    int edgeNum = in.nextInt();
+    int timeLimit = in.nextInt();
+    Graph graph = new Graph(roomNum);
+    for (int j = 0; j < edgeNum; j++) {
+      graph.addEdge(new Edge(in.nextInt() - 1, in.nextInt() - 1, in.nextInt(), in.nextInt()));
+    }
+    int start = 0;
+    int target = roomNum - 1;
+    System.out.println(tryReachMinCostTimeLimit(start, target, graph, timeLimit));
   }
 }
