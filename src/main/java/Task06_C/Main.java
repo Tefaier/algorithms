@@ -3,6 +3,7 @@ package Task06_C;
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
 
 class Parser {
 
@@ -100,7 +101,7 @@ class Parser {
   }
 }
 
-record Edge(int from, int to, int time, int price) {
+record Edge(int from, int to, int price, int time) {
 }
 
 class Graph {
@@ -132,6 +133,7 @@ class Graph {
 public class Main {
   private static Parser in = new Parser(System.in);
   private static int inf = Integer.MAX_VALUE;
+  private static int cost;
 
   static class Unit implements Comparable {
     public int source;
@@ -156,14 +158,13 @@ public class Main {
     }
   }
 
-  private static long tryReachMinCostTimeLimit(int start, int target, Graph graph, int timeLimit) {
-    if (start == target) return 0;
+  private static int[] tryReachMinCostTimeLimit(int start, int target, Graph graph, int timeLimit) {
+    if (start == target) return new int[]{-1};
 
     int[] price = new int[graph.getVertexCount()];
     Arrays.fill(price, inf);
     int[] parents = new int[graph.getVertexCount()];
     Arrays.fill(parents, -1);
-    price[start] = 0;
 
     PriorityQueue<Unit> queue = new PriorityQueue<>();
     queue.add(new Unit(-1, start, 0, 0));
@@ -188,7 +189,8 @@ public class Main {
       }
     }
 
-    return -1;
+    cost = price[target];
+    return parents;
   }
 
   public static void main(String[] args) {
@@ -201,6 +203,28 @@ public class Main {
     }
     int start = 0;
     int target = roomNum - 1;
-    System.out.println(tryReachMinCostTimeLimit(start, target, graph, timeLimit));
+    if (start == target) {
+      System.out.println("0\n1\n1");
+    } else {
+      var parents = tryReachMinCostTimeLimit(start, target, graph, timeLimit);
+      if (parents[target] == -1) {
+        System.out.println(-1);
+      } else {
+        System.out.println(cost);
+        Stack<Integer> chain = new Stack<>();
+        int cursor = target;
+        while (true) {
+          chain.add(cursor);
+          cursor = parents[cursor];
+          if (cursor == -1) {
+            break;
+          }
+        }
+        System.out.println(chain.size());
+        while (!chain.isEmpty()) {
+          System.out.print(chain.pop() + 1 + " ");
+        }
+      }
+    }
   }
 }
