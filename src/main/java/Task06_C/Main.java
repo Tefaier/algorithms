@@ -3,7 +3,6 @@ package Task06_C;
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
-import java.util.stream.Collectors;
 
 class Parser {
 
@@ -151,18 +150,17 @@ public class Main {
     @Override
     public int compareTo(Object o) {
       if (o instanceof Unit) {
-        int difference = time - ((Unit) o).time;
-        return difference;
+        return time - ((Unit) o).time;
       }
       return 0;
     }
   }
 
   private static int[] tryReachMinCostTimeLimit(int start, int target, Graph graph, int timeLimit) {
-    if (start == target) return new int[]{-1};
-
     int[] price = new int[graph.getVertexCount()];
     Arrays.fill(price, inf);
+    int[] minTime = new int[graph.getVertexCount()];
+    Arrays.fill(minTime, inf);
     int[] parents = new int[graph.getVertexCount()];
     Arrays.fill(parents, -1);
 
@@ -178,7 +176,12 @@ public class Main {
       if (unit.price >= price[unit.vertex]) continue;
       // queue is sorted using time, so it means that we came to the vertex with higher price lower time
 
+      // prevent from breaking chain of the best price that still works
+      if ((minTime[target] != inf && minTime[unit.vertex] != inf) && (unit.time + Math.abs(minTime[unit.vertex] - minTime[target]) > timeLimit))
+        continue;
+
       price[unit.vertex] = unit.price;
+      minTime[unit.vertex] = Math.min(minTime[unit.vertex], unit.time);
       parents[unit.vertex] = unit.source;
 
       for (Edge edge : graph.getEdges(unit.vertex)) {
@@ -203,28 +206,32 @@ public class Main {
     }
     int start = 0;
     int target = roomNum - 1;
+
     if (start == target) {
       System.out.println("0\n1\n1");
-    } else {
-      var parents = tryReachMinCostTimeLimit(start, target, graph, timeLimit);
-      if (parents[target] == -1) {
-        System.out.println(-1);
-      } else {
-        System.out.println(cost);
-        Stack<Integer> chain = new Stack<>();
-        int cursor = target;
-        while (true) {
-          chain.add(cursor);
-          cursor = parents[cursor];
-          if (cursor == -1) {
-            break;
-          }
-        }
-        System.out.println(chain.size());
-        while (!chain.isEmpty()) {
-          System.out.print(chain.pop() + 1 + " ");
-        }
+      return;
+    }
+
+    var parents = tryReachMinCostTimeLimit(start, target, graph, timeLimit);
+
+    if (parents[target] == -1) {
+      System.out.println(-1);
+      return;
+    }
+
+    System.out.println(cost);
+    List<Integer> chain = new ArrayList<>();
+    int cursor = target;
+    while (true) {
+      chain.add(cursor);
+      cursor = parents[cursor];
+      if (cursor == -1) {
+        break;
       }
+    }
+    System.out.println(chain.size());
+    for (int i = chain.size() - 1; i >= 0; --i) {
+      System.out.print(chain.get(i) + 1 + " ");
     }
   }
 }
