@@ -159,29 +159,38 @@ public class Main {
   private static int[] tryReachMinCostTimeLimit(int start, int target, Graph graph, int timeLimit) {
     int[] price = new int[graph.getVertexCount()];
     Arrays.fill(price, inf);
+    // from the target
     int[] minTime = new int[graph.getVertexCount()];
     Arrays.fill(minTime, inf);
     int[] parents = new int[graph.getVertexCount()];
     Arrays.fill(parents, -1);
 
     PriorityQueue<Unit> queue = new PriorityQueue<>();
-    queue.add(new Unit(-1, start, 0, 0));
+    queue.add(new Unit(-1, target, 0, 0));
     // rules
     // target is to minimise cost
     // but there is also limit on time
 
     Unit unit;
     while ((unit = queue.poll()) != null) {
+      if (minTime[unit.vertex] != inf) continue;
+      minTime[unit.vertex] = unit.time;
+      for (Edge edge : graph.getEdges(unit.vertex)) {
+        int to = edge.to() == unit.vertex ? edge.from() : edge.to();
+        queue.add(new Unit(0, to, unit.time + edge.time(), 0));
+      }
+    }
+
+    queue.add(new Unit(-1, start, 0, 0));
+    while ((unit = queue.poll()) != null) {
       // because inf is MAX_VALUE
       if (unit.price >= price[unit.vertex]) continue;
       // queue is sorted using time, so it means that we came to the vertex with higher price lower time
 
-      // prevent from breaking chain of the best price that still works
-      if ((minTime[target] != inf && minTime[unit.vertex] != inf) && (unit.time + Math.abs(minTime[unit.vertex] - minTime[target]) > timeLimit))
-        continue;
+      // prevent working if unit has no chance of reaching target
+      if (unit.time + minTime[unit.vertex] > timeLimit) continue;
 
       price[unit.vertex] = unit.price;
-      minTime[unit.vertex] = Math.min(minTime[unit.vertex], unit.time);
       parents[unit.vertex] = unit.source;
 
       for (Edge edge : graph.getEdges(unit.vertex)) {
