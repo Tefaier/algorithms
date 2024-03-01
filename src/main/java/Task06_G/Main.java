@@ -100,7 +100,35 @@ class Parser {
 }
 
 public class Main {
+  private static Parser in = new Parser(System.in);
+
+  private static void fillConnections(boolean[][] graph) {
+    int size = graph.length;
+
+    for (int add = 0; add < size; ++add) {
+      for (int from = 0; from < size; ++from) {
+        for (int to = 0; to < size; ++to) {
+          graph[from][to] = graph[from][to] || (graph[from][add] && graph[add][to]);
+        }
+      }
+    }
+  }
+
   public static void main(String[] args) {
-    Parser in = new Parser(System.in);
+    int gSize = in.nextInt();
+    boolean[][] graph = new boolean[gSize][gSize];
+    for (int i = 0; i < gSize; i++) {
+      for (int j = 0; j < gSize; j++) {
+        graph[i][j] = in.nextInt() == 1 ? true : false;
+      }
+    }
+    fillConnections(graph);
+    for (int i = 0; i < gSize; i++) {
+      for (int j = 0; j < gSize; j++) {
+        System.out.print((graph[i][j] ? 1 : 0) + " ");
+      }
+      System.out.println();
+    }
   }
 }
+
