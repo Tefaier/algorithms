@@ -172,47 +172,26 @@ public class Main {
       }
     }
 
-    Set<Integer> fullCycle = new HashSet<>();
-    Set<Integer> cycleVerts = new HashSet<>();
-    Set<Integer> cycleReach = new HashSet<>();
-
-    for (int i = 0; i < size; i++) {
-      if (nextMatrix[i][i] != -1) {
-        fullCycle.add(i);
-        cycleVerts.add(i);
-        cycleReach.add(i);
-      }
-    }
-    if (cycleVerts.size() == size) return null;
-
-    for (Integer vert : cycleVerts) {
-      for (int i = 0; i < size; i++) {
-        if (nextMatrix[vert][i] != -1) {
-          cycleReach.add(i);
+    for (int from = 0; from < size; ++from) {
+      for (int to = 0; to < size; ++to) {
+        for (int mid = 0; mid < size; ++mid) {
+          if (matrix[from][mid] > negInf && matrix[mid][mid] > 0 && matrix[mid][to] > negInf) {
+            nextMatrix[from][to] = -2;
+            break;
+          }
         }
       }
     }
-
-    for (Integer vert : cycleReach) {
-      for (Integer target : cycleVerts) {
-        if (nextMatrix[vert][target] != -1) {
-          fullCycle.add(vert);
-          break;
-        }
-      }
-    }
-    if (fullCycle.size() == size) return null;
 
     List<Integer> path = new ArrayList<>();
     int index = 0;
     int currentTown = townSeq[0];
     Edge edge;
     while (index < townSeq.length - 1) {
-      if (fullCycle.contains(currentTown)) return null;
+      if (nextMatrix[currentTown][townSeq[index + 1]] == -2) return null;
       while (currentTown != townSeq[index + 1]) {
         path.add(nextMatrix[currentTown][townSeq[index + 1]] + 1);
         currentTown = graph.getEdge(nextMatrix[currentTown][townSeq[index + 1]]).to();
-        if (fullCycle.contains(currentTown)) return null;
       }
       ++index;
     }
