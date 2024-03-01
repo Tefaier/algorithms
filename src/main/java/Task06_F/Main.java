@@ -2,9 +2,7 @@ package Task06_F;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 class Parser {
@@ -126,17 +124,21 @@ class Graph {
   public List<Edge> getEdges() {
     return edges;
   }
+
+  public Edge getEdge(int index) {
+    return edges.get(index);
+  }
 }
 
 public class Main {
   private static Parser in = new Parser(System.in);
-  private static int infinity = 10000000;
+  private static int infinity = 100000000;
   private static int negInf = infinity * -1;
 
   private static List<Integer> flightPathByFloid(Graph graph, int[] townSeq) {
     int size = graph.getVertexCount();
     int[][] matrix = new int[size][size];
-    int[][] nextMatrix = new int[size][size];
+    int[][] nextMatrix = new int[size][size]; // shows which edge to use
     for (int[] row : matrix) {
       Arrays.fill(row, negInf);
     }
@@ -146,9 +148,13 @@ public class Main {
     for (int i = 0; i < size; i++) {
       matrix[i][i] = 0;
     }
+    int counter = 0;
     for (Edge edge : graph.getEdges()) {
-      matrix[edge.from()][edge.to()] = Math.max(matrix[edge.from()][edge.to()], edge.weight());
-      nextMatrix[edge.from()][edge.to()] = edge.from();
+      if (matrix[edge.from()][edge.to()] < edge.weight()) {
+        matrix[edge.from()][edge.to()] = edge.weight();
+        nextMatrix[edge.from()][edge.to()] = counter;
+      }
+      ++counter;
     }
 
     // create APSP
@@ -156,8 +162,9 @@ public class Main {
     for (int add = 0; add < size; ++add) {
       for (int from = 0; from < size; ++from) {
         for (int to = 0; to < size; ++to) {
-          newValue = matrix[from][add] + matrix[add][to];
-          if (newValue < infinity && newValue > matrix[from][to]) {
+          if (matrix[from][add] == negInf || matrix[add][to] == negInf) continue;
+          newValue = Math.min(matrix[from][add] + matrix[add][to], infinity);
+          if (newValue > matrix[from][to]) {
             matrix[from][to] = newValue;
             nextMatrix[from][to] = nextMatrix[from][add];
           }
@@ -165,18 +172,50 @@ public class Main {
       }
     }
 
+    Set<Integer> fullCycle = new HashSet<>();
+    Set<Integer> cycleVerts = new HashSet<>();
+    Set<Integer> cycleReach = new HashSet<>();
+
+    for (int i = 0; i < size; i++) {
+      if (nextMatrix[i][i] != -1) {
+        fullCycle.add(i);
+        cycleVerts.add(i);
+        cycleReach.add(i);
+      }
+    }
+    if (cycleVerts.size() == size) return null;
+
+    for (Integer vert : cycleVerts) {
+      for (int i = 0; i < size; i++) {
+        if (nextMatrix[vert][i] != -1) {
+          cycleReach.add(i);
+        }
+      }
+    }
+
+    for (Integer vert : cycleReach) {
+      for (Integer target : cycleVerts) {
+        if (nextMatrix[vert][target] != -1) {
+          fullCycle.add(vert);
+          break;
+        }
+      }
+    }
+    if (fullCycle.size() == size) return null;
+
     List<Integer> path = new ArrayList<>();
     int index = 0;
     int currentTown = townSeq[0];
-    while (index < townSeq.length - 2) {
+    Edge edge;
+    while (index < townSeq.length - 1) {
+      if (fullCycle.contains(currentTown)) return null;
       while (currentTown != townSeq[index + 1]) {
-        if (matrix[currentTown][currentTown] > 0) return new ArrayList<>();
-        path.add(currentTown);
-        currentTown = nextMatrix[currentTown][townSeq[index + 1]];
+        path.add(nextMatrix[currentTown][townSeq[index + 1]] + 1);
+        currentTown = graph.getEdge(nextMatrix[currentTown][townSeq[index + 1]]).to();
+        if (fullCycle.contains(currentTown)) return null;
       }
       ++index;
     }
-    path.add(currentTown);
     return path;
   }
 
@@ -193,11 +232,11 @@ public class Main {
       lectureTowns[i] = in.nextInt() - 1;
     }
     var result = flightPathByFloid(graph, lectureTowns);
-    if (result.isEmpty()) {
+    if (result == null) {
       System.out.println("infinitely kind");
       return;
     }
     System.out.println(result.size());
-    System.out.println(result.stream().map(town -> Integer.toString(town + 1)).collect(Collectors.joining(" ")));
+    System.out.println(result.stream().map(edge -> Integer.toString(edge)).collect(Collectors.joining(" ")));
   }
 }
