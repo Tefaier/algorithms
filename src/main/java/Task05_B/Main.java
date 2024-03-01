@@ -5,338 +5,341 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.IntStream;
 
-public class Main {
-  static class Parser {
+class Parser {
+  private final int BUFFER_SIZE = 1 << 16;
+  private DataInputStream din;
+  private byte[] buffer;
+  private int bufferPointer, bytesRead;
 
-    private final int BUFFER_SIZE = 1 << 16;
-    private DataInputStream din;
-    private byte[] buffer;
-    private int bufferPointer, bytesRead;
+  public Parser(InputStream in) {
+    din = new DataInputStream(in);
+    buffer = new byte[BUFFER_SIZE];
+    bufferPointer = bytesRead = 0;
+  }
 
-    public Parser(InputStream in) {
-      din = new DataInputStream(in);
-      buffer = new byte[BUFFER_SIZE];
-      bufferPointer = bytesRead = 0;
-    }
-
-    public String nextString(int maxSize) {
-      byte[] ch = new byte[maxSize];
-      int point = 0;
-      try {
-        byte c = read();
-        while (c == ' ' || c == '\n' || c == '\r') {
-          c = read();
-        }
-        while (c != ' ' && c != '\n' && c != '\r') {
-          ch[point++] = c;
-          c = read();
-        }
-      } catch (Exception e) {
+  public String nextString(int maxSize) {
+    byte[] ch = new byte[maxSize];
+    int point = 0;
+    try {
+      byte c = read();
+      while (c == ' ' || c == '\n' || c == '\r') {
+        c = read();
       }
-      return new String(ch, 0, point);
-    }
-
-    public int nextInt() {
-      int ret = 0;
-      boolean neg;
-      try {
-        byte c = read();
-        while (c <= ' ') {
-          c = read();
-        }
-        neg = c == '-';
-        if (neg) {
-          c = read();
-        }
-        do {
-          ret = ret * 10 + c - '0';
-          c = read();
-        } while (c > ' ');
-
-        if (neg) {
-          return -ret;
-        }
-      } catch (Exception e) {
+      while (c != ' ' && c != '\n' && c != '\r') {
+        ch[point++] = c;
+        c = read();
       }
-      return ret;
+    } catch (Exception e) {
     }
+    return new String(ch, 0, point);
+  }
 
-    public long nextLong() {
-      long ret = 0;
-      boolean neg;
-      try {
-        byte c = read();
-        while (c <= ' ') {
-          c = read();
-        }
-        neg = c == '-';
-        if (neg) {
-          c = read();
-        }
-        do {
-          ret = ret * 10 + c - '0';
-          c = read();
-        } while (c > ' ');
-
-        if (neg) {
-          return -ret;
-        }
-      } catch (Exception e) {
+  public int nextInt() {
+    int ret = 0;
+    boolean neg;
+    try {
+      byte c = read();
+      while (c <= ' ') {
+        c = read();
       }
-      return ret;
+      neg = c == '-';
+      if (neg) {
+        c = read();
+      }
+      do {
+        ret = ret * 10 + c - '0';
+        c = read();
+      } while (c > ' ');
+
+      if (neg) {
+        return -ret;
+      }
+    } catch (Exception e) {
     }
+    return ret;
+  }
 
-    private void fillBuffer() {
-      try {
-        bytesRead = din.read(buffer, bufferPointer = 0, BUFFER_SIZE);
-      } catch (Exception e) {
+  public long nextLong() {
+    long ret = 0;
+    boolean neg;
+    try {
+      byte c = read();
+      while (c <= ' ') {
+        c = read();
       }
-      if (bytesRead == -1) buffer[0] = -1;
+      neg = c == '-';
+      if (neg) {
+        c = read();
+      }
+      do {
+        ret = ret * 10 + c - '0';
+        c = read();
+      } while (c > ' ');
+
+      if (neg) {
+        return -ret;
+      }
+    } catch (Exception e) {
     }
+    return ret;
+  }
 
-    private byte read() {
-      if (bufferPointer == bytesRead) {
-        fillBuffer();
-      }
-      return buffer[bufferPointer++];
+  private void fillBuffer() {
+    try {
+      bytesRead = din.read(buffer, bufferPointer = 0, BUFFER_SIZE);
+    } catch (Exception e) {
+    }
+    if (bytesRead == -1) buffer[0] = -1;
+  }
+
+  private byte read() {
+    if (bufferPointer == bytesRead) {
+      fillBuffer();
+    }
+    return buffer[bufferPointer++];
+  }
+
+}
+
+enum VertexStatus {White, Gray, Black;}
+
+interface Edge<V> {
+  V from();
+
+  V to();
+}
+
+class SimpleEdge<V> implements Edge<V> {
+  private V from;
+  private V to;
+
+  public SimpleEdge(V from, V to) {
+    this.from = from;
+    this.to = to;
+  }
+
+  @Override
+  public V from() {
+    return from;
+  }
+
+  @Override
+  public V to() {
+    return to;
+  }
+}
+
+class Graph<V, E extends Edge<V>> {
+  public List<V> vertexes;
+  public HashMap<V, List<E>> edgesMap = new HashMap<>();
+
+  public Graph(List<V> vertexes, List<E> edges) {
+    this.vertexes = vertexes;
+    for (E edge : edges) {
+      edgesMap.putIfAbsent(edge.from(), new ArrayList<>());
+      edgesMap.get(edge.from()).add(edge);
     }
   }
 
-  static enum VertexStatus {White, Gray, Black}
+  public List<E> getConnected(V vertex) {
+    return edgesMap.getOrDefault(vertex, new ArrayList<>());
+  }
 
-  static class DFS<V, E extends Edge, G extends GraphExplorer<V, E>> {
-    public final Graph<V, E> graph;
-    public final G explorer;
-    private int[] checkMemory;
+  public int getVertexCount() {
+    return vertexes.size();
+  }
+}
 
-    public DFS(Graph<V, E> graph, G graphExplorer) {
-      this.graph = graph;
-      this.explorer = graphExplorer;
-      this.checkMemory = new int[graph.vertexes.size()];
-      Arrays.fill(this.checkMemory, 0);
+interface GraphExplorer<V, E extends Edge<V>> {
+  public Stack<V> getVisitStack();
+
+  public V getRandomUnexplored();
+
+  public VertexStatus getVertexStatus(V vertex);
+
+  public void setVertexStatus(V vertex, VertexStatus status);
+
+  public void startExploring(V vertex);
+
+  public void finishExploring(V vertex);
+
+  public void exploreWhite(E edge);
+
+  public void exploreGray(E edge);
+
+  public void exploreBlack(E edge);
+
+  public void endVertex(V vertex);
+
+  public boolean isFinished();
+}
+
+class ClustersSearch<V, E extends Edge<V>> implements GraphExplorer<V, E> {
+  public StringBuilder answer = new StringBuilder();
+  public StringBuilder lastCluster;
+  public int lastClusterSize = 0;
+  public int clusterNumber = 0;
+
+  private final Graph<V, E> graph;
+  private final Stack<V> visitStack = new Stack<>();
+
+  // state of each index
+  private final HashMap<V, VertexStatus> vertexStatuses = new HashMap<>();
+  private int lastCheckedIndex = -1;
+
+  public ClustersSearch(Graph<V, E> graph) {
+    this.graph = graph;
+    prepareGraph();
+  }
+
+  public void prepareGraph() {
+    for (int i = 0; i < graph.getVertexCount(); i++) {
+      vertexStatuses.put(graph.vertexes.get(i), VertexStatus.White);
     }
+  }
 
-    public void initExplorer() {
-      explorer.prepareGraph(graph);
-    }
+  @Override
+  public Stack<V> getVisitStack() {
+    return visitStack;
+  }
 
-    public void startDFS() {
-      Integer vertex = explorer.getRandomUnexplored();
-      if (vertex == null) {
-        return;
+  @Override
+  public V getRandomUnexplored() {
+    for (int i = lastCheckedIndex + 1; i < vertexStatuses.size(); i++) {
+      if (vertexStatuses.get(graph.vertexes.get(i)) == VertexStatus.White) {
+        lastCheckedIndex = i;
+        return graph.vertexes.get(i);
       }
-      explorer.startExploring(vertex);
-      dfsOnStack();
-      explorer.finishExploring(vertex);
     }
+    lastCheckedIndex = vertexStatuses.size() - 1;
+    return null;
+  }
 
-    public void startDFS(Integer vertex) {
-      explorer.startExploring(vertex);
-      dfsOnStack();
-      explorer.finishExploring(vertex);
+  @Override
+  public VertexStatus getVertexStatus(V vertex) {
+    return vertexStatuses.get(vertex);
+  }
+
+  @Override
+  public void setVertexStatus(V vertex, VertexStatus status) {
+    vertexStatuses.put(vertex, status);
+  }
+
+  @Override
+  public void startExploring(V vertex) {
+    clusterNumber++;
+    lastClusterSize = 1;
+    lastCluster = new StringBuilder();
+    lastCluster.append(vertex.toString()).append(" ");
+    setVertexStatus(vertex, VertexStatus.Gray);
+    visitStack.add(vertex);
+  }
+
+  @Override
+  public void finishExploring(V vertex) {
+    answer.append(lastClusterSize).append('\n').append(lastCluster).append('\n');
+  }
+
+  @Override
+  public void exploreWhite(E edge) {
+    setVertexStatus(edge.to(), VertexStatus.Gray);
+    visitStack.add(edge.to());
+    lastClusterSize++;
+    lastCluster.append(edge.to().toString()).append(" ");
+  }
+
+  @Override
+  public void exploreGray(E edge) {
+    return;
+  }
+
+  @Override
+  public void exploreBlack(E edge) {
+    return;
+  }
+
+  @Override
+  public void endVertex(V vertex) {
+    visitStack.pop();
+  }
+
+  @Override
+  public boolean isFinished() {
+    return lastCheckedIndex == vertexStatuses.size() - 1;
+  }
+}
+
+class DFS<V, E extends Edge<V>, G extends GraphExplorer<V, E>> {
+  public final Graph<V, E> graph;
+
+  public final G explorer;
+
+  private final Map<V, Integer> checkMemory = new HashMap<>();
+
+  public DFS(Graph<V, E> graph, G graphExplorer) {
+    this.graph = graph;
+    this.explorer = graphExplorer;
+    for (int i = 0; i < graph.vertexes.size(); i++) {
+      checkMemory.put(graph.vertexes.get(i), 0);
     }
+  }
 
-    public void dfsOnStack() {
-      while (!explorer.getVisitStack().isEmpty()) {
-        if (explorer.isFinished()) {
+  public void startDFS() {
+    V vertex = explorer.getRandomUnexplored();
+    if (vertex == null) {
+      return;
+    }
+    explorer.startExploring(vertex);
+    dfsOnStack();
+    explorer.finishExploring(vertex);
+  }
+
+  public void dfsOnStack() {
+    while (!explorer.getVisitStack().isEmpty()) {
+      if (explorer.isFinished()) {
+        break;
+      }
+
+      V currentVert = explorer.getVisitStack().peek();
+      List<E> outgoingEdges = graph.getConnected(currentVert);
+      while (checkMemory.get(currentVert) < outgoingEdges.size()) {
+        E edge = outgoingEdges.get(checkMemory.get(currentVert));
+        checkMemory.replace(currentVert, checkMemory.get(currentVert) + 1);
+        VertexStatus status = explorer.getVertexStatus(edge.to());
+        if (status == VertexStatus.White) {
+          explorer.exploreWhite(edge);
           break;
+        } else if (status == VertexStatus.Gray) {
+          explorer.exploreGray(edge);
+        } else {
+          explorer.exploreBlack(edge);
         }
-
-        Integer currentIndex = explorer.getVisitStack().peek();
-        List<Integer> connected = graph.getConnected(currentIndex);
-        while (checkMemory[currentIndex] < connected.size()) {
-          Integer next = connected.get(checkMemory[currentIndex]);
-          ++checkMemory[currentIndex];
-          VertexStatus status = explorer.getVertexStatus(next);
-          if (status == VertexStatus.White) {
-            explorer.setVertexStatus(next, VertexStatus.Gray);
-            explorer.exploreWhite(next);
-            break;
-          } else if (status == VertexStatus.Gray) {
-            explorer.exploreGray(next);
-          } else {
-            explorer.exploreBlack(next);
-          }
-        }
-        if (currentIndex.equals(explorer.getVisitStack().peek())) {
-          explorer.setVertexStatus(currentIndex, VertexStatus.Black);
-          explorer.endVertex(currentIndex);
-        }
+      }
+      if (currentVert.equals(explorer.getVisitStack().peek())) {
+        explorer.setVertexStatus(currentVert, VertexStatus.Black);
+        explorer.endVertex(currentVert);
       }
     }
   }
-
-  static class Graph<V, E extends Edge> {
-    public List<List<Integer>> connectionList = new ArrayList<>();
-    // vertexes serves as a backup from index to original information
-    // however edges must use indexes of vertexes
-    public List<V> vertexes;
-    public List<E> edges;
-
-    public Graph() {
-
-    }
-
-    public Graph(List<E> edges, List<V> vertexes) {
-      this.vertexes = vertexes;
-      this.edges = edges;
-      for (int i = 0; i < vertexes.size(); i++) {
-        connectionList.add(new ArrayList<>());
-      }
-      for (Edge edge : edges) {
-        connectionList.get(edge.from()).add(edge.to());
-        if (!edge.orientated()) {
-          connectionList.get(edge.to()).add(edge.from());
-        }
-      }
-    }
-
-    public List<Integer> getConnected(Integer vertex) {
-      return connectionList.get(vertex);
-    }
-
-    public int getVertexCount() {
-      return vertexes.size();
-    }
-
-    public int getEdgesCount() {
-      return edges.size();
-    }
-  }
-
-  static record Edge(Integer from, Integer to, boolean orientated) {
-  }
-
-  static interface GraphExplorer<V, E extends Edge> {
-    public Stack<Integer> getVisitStack();
-
-    public Integer getRandomUnexplored();
-
-    public void prepareGraph(Graph<V, E> graph);
-
-    public VertexStatus getVertexStatus(Integer vertex);
-
-    public void setVertexStatus(Integer vertex, VertexStatus status);
-
-    public void startExploring(Integer vertex);
-
-    public void finishExploring(Integer vertex);
-
-    public void exploreWhite(Integer vertex);
-
-    public void exploreGray(Integer vertex);
-
-    public void exploreBlack(Integer vertex);
-
-    public void endVertex(Integer vertex);
-
-    public boolean isFinished();
-  }
+}
 
 
-  static class ClustersSearch<V, E extends Edge> implements GraphExplorer<V, E> {
-    public StringBuilder answer = new StringBuilder();
-    public StringBuilder lastCluster;
-    public int lastClusterSize = 0;
-    public int clusterNumber = 0;
-
-    private Graph<V, E> graph;
-    private Stack<Integer> visitStack = new Stack<>();
-
-    // state of each index
-    private List<VertexStatus> vertexStatuses = new ArrayList<>();
-    private Integer lastCheckedIndex = -1;
-
-    @Override
-    public Stack<Integer> getVisitStack() {
-      return visitStack;
-    }
-
-    @Override
-    public Integer getRandomUnexplored() {
-      for (int i = lastCheckedIndex + 1; i < vertexStatuses.size(); i++) {
-        if (vertexStatuses.get(i) == VertexStatus.White) {
-          lastCheckedIndex = i;
-          return i;
-        }
-      }
-      lastCheckedIndex = vertexStatuses.size() - 1;
-      return null;
-    }
-
-    @Override
-    public void prepareGraph(Graph<V, E> graph) {
-      this.graph = graph;
-      for (int i = 0; i < graph.getVertexCount(); i++) {
-        vertexStatuses.add(VertexStatus.White);
-      }
-    }
-
-    @Override
-    public VertexStatus getVertexStatus(Integer vertex) {
-      return vertexStatuses.get(vertex);
-    }
-
-    @Override
-    public void setVertexStatus(Integer vertex, VertexStatus status) {
-      vertexStatuses.set(vertex, status);
-    }
-
-    @Override
-    public void startExploring(Integer vertex) {
-      setVertexStatus(vertex, VertexStatus.Gray);
-      clusterNumber++;
-      lastClusterSize = 0;
-      lastCluster = new StringBuilder();
-      exploreWhite(vertex);
-    }
-
-    @Override
-    public void finishExploring(Integer vertex) {
-      answer.append(lastClusterSize).append('\n').append(lastCluster).append('\n');
-    }
-
-    @Override
-    public void exploreWhite(Integer vertex) {
-      visitStack.add(vertex);
-      lastClusterSize++;
-      lastCluster.append(graph.vertexes.get(vertex)).append(" ");
-    }
-
-    @Override
-    public void exploreGray(Integer vertex) {
-      return;
-    }
-
-    @Override
-    public void exploreBlack(Integer vertex) {
-      return;
-    }
-
-    @Override
-    public void endVertex(Integer vertex) {
-      visitStack.pop();
-    }
-
-    @Override
-    public boolean isFinished() {
-      return lastCheckedIndex == vertexStatuses.size() - 1;
-    }
-  }
-
+public class Main {
   public static void main(String[] args) {
     Parser in = new Parser(System.in);
     int vertexes = in.nextInt();
     int edges = in.nextInt();
     List<Integer> vertexesList = IntStream.rangeClosed(1, vertexes).boxed().toList();
-    List<Edge> edgesList = new ArrayList<>();
+    List<SimpleEdge<Integer>> edgesList = new ArrayList<>();
     for (int i = 0; i < edges; i++) {
-      edgesList.add(new Edge(in.nextInt() - 1, in.nextInt() - 1, false));
+      int v1 = in.nextInt();
+      int v2 = in.nextInt();
+      edgesList.add(new SimpleEdge<>(v1, v2));
+      edgesList.add(new SimpleEdge<>(v2, v1));
     }
-    Graph<Integer, Edge> graph = new Graph<>(edgesList, vertexesList);
-    ClustersSearch<Integer, Edge> clustersSearch = new ClustersSearch<>();
-    DFS<Integer, Edge, ClustersSearch<Integer, Edge>> dfs = new DFS<>(graph, clustersSearch);
-    dfs.initExplorer();
+    Graph<Integer, SimpleEdge<Integer>> graph = new Graph<>(vertexesList, edgesList);
+    ClustersSearch<Integer, SimpleEdge<Integer>> clustersSearch = new ClustersSearch<>(graph);
+    DFS<Integer, SimpleEdge<Integer>, ClustersSearch<Integer, SimpleEdge<Integer>>> dfs = new DFS<>(graph, clustersSearch);
     while (!clustersSearch.isFinished()) {
       dfs.startDFS();
     }
