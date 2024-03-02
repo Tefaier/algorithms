@@ -272,6 +272,7 @@ class AStar {
       }
     }
     rowTarget[gameState.emptyX][gameState.emptyY] = -1;
+    columnTarget[gameState.emptyX][gameState.emptyY] = -1;
   }
 
   private void calculateConflicts(byte[][] rowTarget, byte[][] columnTarget, byte[][] rowInConflict, byte[][] columnInConflict, GameState gameState) {
