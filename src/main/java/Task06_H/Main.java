@@ -108,8 +108,6 @@ class GameState implements Comparable {
     R
   }
 
-  public static int dimension;
-
   public int depth;
   public int value;
   public byte[][] field;
@@ -160,15 +158,13 @@ class GameState implements Comparable {
 class AStar {
   private PriorityQueue<GameState> queue = new PriorityQueue<>();
   private Set<String> visited = new HashSet<>();
-  private int visitCount = 0;
   private GameState target;
   private int size;
   private byte emptySign;
 
   public AStar(GameState source, GameState target, byte emptySign) {
     this.target = target;
-    GameState.dimension = source.field.length;
-    size = GameState.dimension;
+    size = source.field.length;
     this.emptySign = emptySign;
     queue.add(source);
   }
@@ -179,10 +175,7 @@ class AStar {
 
     while (!queue.isEmpty()) {
       var current = queue.poll();
-      ++visitCount;
-
-      if (current.equals(target))
-        return current;
+      if (current.equals(target)) return current;
 
       expand(current);
     }
@@ -225,7 +218,7 @@ class AStar {
   }
 
   private int heuristic(GameState gameState) {
-    return manhattanDist(gameState) + linearConflict(gameState);
+    return misplaceCount(gameState); //manhattanDist(gameState) + linearConflict(gameState);
   }
 
   // not used currently
@@ -260,25 +253,36 @@ class AStar {
   }
 
   private int linearConflict(GameState gameState) {
-    int[][] rowTarget = new int[size][size];
-    int[][] columnTarget = new int[size][size];
+    byte[][] rowTarget = new byte[size][size];
+    byte[][] columnTarget = new byte[size][size];
+    createTargets(rowTarget, columnTarget, gameState);
+
+    byte[][] rowInConflict = new byte[size][size];
+    byte[][] columnInConflict = new byte[size][size];
+    calculateConflicts(rowTarget, columnTarget, rowInConflict, columnInConflict, gameState);
+
+    return solveConflicts(rowInConflict, columnInConflict, gameState);
+  }
+
+  private void createTargets(byte[][] rowTarget, byte[][] columnTarget, GameState gameState) {
     for (int x = 0; x < size; ++x) {
       for (int y = 0; y < size; ++y) {
-        rowTarget[x][y] = (gameState.field[x][y] - 1) / size;
-        columnTarget[x][y] = (gameState.field[x][y] - 1) % size;
+        rowTarget[x][y] = (byte) ((gameState.field[x][y] - 1) / size);
+        columnTarget[x][y] = (byte) ((gameState.field[x][y] - 1) % size);
       }
     }
     rowTarget[gameState.emptyX][gameState.emptyY] = -1;
+  }
 
-    int rowConflicts = 0;
-    int columnConflicts = 0;
+  private void calculateConflicts(byte[][] rowTarget, byte[][] columnTarget, byte[][] rowInConflict, byte[][] columnInConflict, GameState gameState) {
     for (int x = 0; x < size; ++x) {
       for (int y = 0; y < size; ++y) {
         //get row conflicts
         if (rowTarget[x][y] == x) {
           for (int k = y + 1; k < size; ++k) {
             if (gameState.field[x][y] > gameState.field[x][k] && rowTarget[x][k] == x) {
-              rowConflicts += 2;
+              rowInConflict[x][y]++;
+              rowInConflict[x][k]++;
             }
           }
         }
@@ -286,34 +290,84 @@ class AStar {
         if (columnTarget[x][y] == y) {
           for (int k = x + 1; k < size; ++k) {
             if (gameState.field[x][y] > gameState.field[k][y] && columnTarget[k][y] == y) {
-              columnConflicts += 2;
+              columnInConflict[x][y]++;
+              columnInConflict[k][y]++;
             }
           }
         }
       }
     }
+  }
 
-    return rowConflicts + columnConflicts;
+  private int solveConflicts(byte[][] rowInConflict, byte[][] columnInConflict, GameState gameState) {
+    int counter = 0;
+    byte max;
+    byte target = -1;
+    // by row
+    for (byte x = 0; x < size; ++x) {
+      while (true) {
+        // if continue
+        max = 0;
+        for (byte y = 0; y < size; ++y) {
+          if (max < rowInConflict[x][y]) {
+            max = rowInConflict[x][y];
+            target = y;
+          }
+        }
+        if (max == 0) break;
+        // move tile logic
+        rowInConflict[x][target] = 0;
+        for (byte y = 0; y < size; ++y) {
+          if (gameState.field[x][y] > gameState.field[x][target] ^ y > target) {
+            --rowInConflict[x][y];
+          }
+        }
+        ++counter;
+      }
+    }
+    // by column
+    for (byte y = 0; y < size; ++y) {
+      while (true) {
+        // if continue
+        max = 0;
+        for (byte x = 0; x < size; ++x) {
+          if (max < columnInConflict[x][y]) {
+            max = columnInConflict[x][y];
+            target = x;
+          }
+        }
+        if (max == 0) break;
+        // move tile logic
+        columnInConflict[target][y] = 0;
+        for (byte x = 0; x < size; ++x) {
+          if (gameState.field[x][y] > gameState.field[target][y] ^ x > target) {
+            --columnInConflict[x][y];
+          }
+        }
+        ++counter;
+      }
+    }
+    return counter * 2;
   }
 
   private boolean isSolvable(GameState start) {
     byte[] linearForm = new byte[size * size];
     int counter = 0;
-    for (int i = 0; i < size; i++)
-      for (int j = 0; j < size; j++)
-        linearForm[counter++] = start.field[i][j];
+    for (int x = 0; x < size; ++x)
+      for (int y = 0; y < size; ++y)
+        linearForm[counter++] = start.field[x][y];
 
     int invCount = countInversions(linearForm);
-    return size % 2 == 1 ? invCount % 2 == 0 : (start.emptyX % 2 == 0 ^ invCount % 2 == 0);
+    return (size % 2 == 1) ? (invCount % 2 == 0) : (start.emptyX % 2 == 0 ^ invCount % 2 == 0);
   }
 
   private int countInversions(byte[] arr) {
     // should be small so just N^2 count
     int counter = 0;
-    for (int p1 = 0; p1 < size * size; p1++) {
+    for (int p1 = 0; p1 < size * size; ++p1) {
       if (arr[p1] == emptySign) continue;
-      for (int p2 = p1 + 1; p2 < size * size; p2++) {
-        if (arr[p2] != emptySign && arr[p1] > arr[p2]) counter++;
+      for (int p2 = p1 + 1; p2 < size * size; ++p2) {
+        if (arr[p2] != emptySign && arr[p1] > arr[p2]) ++counter;
       }
     }
     return counter;
