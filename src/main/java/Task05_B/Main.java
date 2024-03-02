@@ -130,12 +130,14 @@ class SimpleEdge<V> implements Edge<V> {
 }
 
 class Graph<V, E extends Edge<V>> {
+  private int edgesNum = 0;
   public List<V> vertexes;
   public HashMap<V, List<E>> edgesMap = new HashMap<>();
 
   public Graph(List<V> vertexes, List<E> edges) {
     this.vertexes = vertexes;
     for (E edge : edges) {
+      ++edgesNum;
       edgesMap.putIfAbsent(edge.from(), new ArrayList<>());
       edgesMap.get(edge.from()).add(edge);
     }
@@ -147,6 +149,10 @@ class Graph<V, E extends Edge<V>> {
 
   public int getVertexCount() {
     return vertexes.size();
+  }
+
+  public int getEdgeCount() {
+    return edgesNum;
   }
 }
 
