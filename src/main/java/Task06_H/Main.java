@@ -358,7 +358,7 @@ public class Main {
     var path = alg.reconstructOrder(finish);
     System.out.println(path.size());
     while (!path.isEmpty()) {
-      System.out.print(path.pop() + " ");
+      System.out.print(path.pop());
     }
   }
 
