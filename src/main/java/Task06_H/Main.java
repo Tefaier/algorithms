@@ -4,6 +4,64 @@ import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
 
+public class Main {
+  private static Parser in = new Parser(System.in);
+  private static byte size = 3;
+  private static byte emptySign = 0;
+
+  private static <V extends Vertex, A extends AStarVisitor<V>, H extends Heuristic<V>> void AStar(V from, A visitor, H heuristic) {
+    PriorityQueue<V> queue = new PriorityQueue<>();
+    Set<String> visited = new HashSet<>();
+    from.value = from.depth + heuristic.calculate(from);
+    queue.add(from);
+    visited.add(from.toString());
+
+    V current;
+    while ((current = queue.poll()) != null) {
+      if (current.value - current.depth == 0) {
+        visitor.setAnswer(current);
+        break;
+      }
+
+      for (V vert : visitor.expandVertex(current)) {
+        if (!visited.contains(vert.toString())) {
+          vert.value = vert.depth + heuristic.calculate(vert);
+          visited.add(vert.toString());
+          queue.add(vert);
+        }
+      }
+    }
+  }
+
+  public static void main(String[] args) {
+    byte emptyX = -1;
+    byte emptyY = -1;
+    byte[][] field = new byte[size][size];
+    for (byte x = 0; x < size; ++x) {
+      for (byte y = 0; y < size; ++y) {
+        field[x][y] = (byte) in.nextInt();
+        if (field[x][y] == emptySign) {
+          emptyX = x;
+          emptyY = y;
+        }
+      }
+    }
+    GameState start = new GameState(null, null, field, emptyX, emptyY, 0);
+    AStarVisitorNPuzzle visitor = new AStarVisitorNPuzzle(size, emptySign, start);
+    Heuristic<GameState> heuristic = new ManhattanAndLinearConflict<>(size, emptySign);
+    AStar(start, visitor, heuristic);
+    var path = visitor.reconstructOrder();
+    if (path == null) {
+      System.out.println(-1);
+      return;
+    }
+    System.out.println(path.size());
+    while (!path.isEmpty()) {
+      System.out.print(path.pop());
+    }
+  }
+}
+
 class Parser {
 
   private final int BUFFER_SIZE = 1 << 16;
@@ -391,63 +449,5 @@ class AStarVisitorNPuzzle implements AStarVisitor<GameState> {
       current = current.parent;
     }
     return moves;
-  }
-}
-
-public class Main {
-  private static Parser in = new Parser(System.in);
-  private static byte size = 3;
-  private static byte emptySign = 0;
-
-  private static <V extends Vertex, A extends AStarVisitor<V>, H extends Heuristic<V>> void AStar(V from, A visitor, H heuristic) {
-    PriorityQueue<V> queue = new PriorityQueue<>();
-    Set<String> visited = new HashSet<>();
-    from.value = from.depth + heuristic.calculate(from);
-    queue.add(from);
-    visited.add(from.toString());
-
-    V current;
-    while ((current = queue.poll()) != null) {
-      if (current.value - current.depth == 0) {
-        visitor.setAnswer(current);
-        break;
-      }
-
-      for (V vert : visitor.expandVertex(current)) {
-        if (!visited.contains(vert.toString())) {
-          vert.value = vert.depth + heuristic.calculate(vert);
-          visited.add(vert.toString());
-          queue.add(vert);
-        }
-      }
-    }
-  }
-
-  public static void main(String[] args) {
-    byte emptyX = -1;
-    byte emptyY = -1;
-    byte[][] field = new byte[size][size];
-    for (byte x = 0; x < size; ++x) {
-      for (byte y = 0; y < size; ++y) {
-        field[x][y] = (byte) in.nextInt();
-        if (field[x][y] == emptySign) {
-          emptyX = x;
-          emptyY = y;
-        }
-      }
-    }
-    GameState start = new GameState(null, null, field, emptyX, emptyY, 0);
-    AStarVisitorNPuzzle visitor = new AStarVisitorNPuzzle(size, emptySign, start);
-    Heuristic<GameState> heuristic = new ManhattanAndLinearConflict<>(size, emptySign);
-    AStar(start, visitor, heuristic);
-    var path = visitor.reconstructOrder();
-    if (path == null) {
-      System.out.println(-1);
-      return;
-    }
-    System.out.println(path.size());
-    while (!path.isEmpty()) {
-      System.out.print(path.pop());
-    }
   }
 }
