@@ -100,7 +100,7 @@ class Parser {
   }
 }
 
-class GameState implements Comparable {
+class GameState {
   public enum Move {
     U,
     D,
@@ -109,107 +109,97 @@ class GameState implements Comparable {
   }
 
   public int depth;
-  public int value;
   public byte[][] field;
   public byte emptyX;
   public byte emptyY;
-  public String stringRepr; // precalculated toString
-  public GameState parent;
-  public Move moveFromParent;
 
-  public GameState(GameState parent, Move move, byte[][] field, byte emptyX, byte emptyY, int depth) {
-    this.parent = parent;
-    this.moveFromParent = move;
+  public GameState(byte[][] field, byte emptyX, byte emptyY, int depth) {
     this.field = field;
     this.emptyX = emptyX;
     this.emptyY = emptyY;
     this.depth = depth;
-    this.stringRepr = this.toString();
-  }
-
-  @Override
-  public int compareTo(Object o) {
-    if (o instanceof GameState) {
-      int diff = value - ((GameState) o).value;
-      return diff != 0 ? diff : depth - ((GameState) o).depth;
-    }
-    return 0;
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder builder = new StringBuilder();
-    for (var arr : field) {
-      for (byte state : arr) {
-        builder.append(state).append(',');
-      }
-    }
-    return builder.toString();
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (obj instanceof GameState) {
-      return stringRepr.equals(((GameState) obj).stringRepr);
-    }
-    return false;
   }
 }
 
-class AStar {
-  private PriorityQueue<GameState> queue = new PriorityQueue<>();
-  private Set<String> visited = new HashSet<>();
+class IDA {
+  private GameState source;
   private GameState target;
   private int size;
   private byte emptySign;
+  private int threshold;
+  private int addUpTo;
+  private Stack<GameState.Move> path;
+  private boolean isSolved;
 
-  public AStar(GameState source, GameState target, byte emptySign) {
+  public IDA(GameState source, GameState target, byte emptySign) {
+    this.source = source;
     this.target = target;
     size = source.field.length;
     this.emptySign = emptySign;
-    queue.add(source);
+    this.isSolved = false;
   }
 
-  public GameState execute() {
-    if (!isSolvable(queue.peek())) return null;
-    visited.add(queue.peek().stringRepr);
-
-    while (!queue.isEmpty()) {
-      var current = queue.poll();
-      if (current.equals(target)) return current;
-
-      expand(current);
-    }
-    return null;
-  }
-
-  private void expand(GameState vertex) {
-    byte x = vertex.emptyX;
-    byte y = vertex.emptyY;
-
-    if (x > 0) {
-      tryGo(vertex, (byte) (x - 1), y, GameState.Move.D);
-    }
-    if (y > 0) {
-      tryGo(vertex, x, (byte) (y - 1), GameState.Move.R);
-    }
-    if (x < size - 1) {
-      tryGo(vertex, (byte) (x + 1), y, GameState.Move.U);
-    }
-    if (y < size - 1) {
-      tryGo(vertex, x, (byte) (y + 1), GameState.Move.L);
+  public void execute() {
+    if (!isSolvable(source)) return;
+    path = new Stack<>();
+    threshold = source.depth + heuristic(source);
+    while (true) {
+      threshold = idaIteration(source, null);
+      if (isSolved) {
+        break;
+      }
     }
   }
 
-  private void tryGo(GameState from, byte toX, byte toY, GameState.Move move) {
+  private int idaIteration(GameState state, GameState.Move lastMove) {
+    int manh = manhattanDist(state);
+    int val = state.depth + manh + linearConflict(state);
+    if (val > threshold) {
+      return val;
+    }
+    if (manh == 0) {
+      isSolved = true;
+      return val;
+    }
+
+    int min = Integer.MAX_VALUE;
+
+    if (state.emptyX > 0 && !GameState.Move.U.equals(lastMove)) {
+      min = Math.min(tryGo(state, (byte) (state.emptyX - 1), state.emptyY, GameState.Move.D), min);
+      if (isSolved) {
+        path.add(GameState.Move.D);
+        return min;
+      }
+    }
+    if (state.emptyY > 0 && !GameState.Move.L.equals(lastMove)) {
+      min = Math.min(tryGo(state, state.emptyX, (byte) (state.emptyY - 1), GameState.Move.R), min);
+      if (isSolved) {
+        path.add(GameState.Move.R);
+        return min;
+      }
+    }
+    if (state.emptyX < size - 1 && !GameState.Move.D.equals(lastMove)) {
+      min = Math.min(tryGo(state, (byte) (state.emptyX + 1), state.emptyY, GameState.Move.U), min);
+      if (isSolved) {
+        path.add(GameState.Move.U);
+        return min;
+      }
+    }
+    if (state.emptyY < size - 1 && !GameState.Move.R.equals(lastMove)) {
+      min = Math.min(tryGo(state, state.emptyX, (byte) (state.emptyY + 1), GameState.Move.L), min);
+      if (isSolved) {
+        path.add(GameState.Move.L);
+        return min;
+      }
+    }
+    return min;
+  }
+
+  private int tryGo(GameState from, byte toX, byte toY, GameState.Move move) {
     byte[][] newField = Arrays.stream(from.field).map(byte[]::clone).toArray(byte[][]::new);
     swap(newField, from.emptyX, from.emptyY, toX, toY);
-    GameState newGameState = new GameState(from, move, newField, toX, toY, from.depth + 1);
-    if (!visited.contains(newGameState.stringRepr)) {
-      newGameState.value = newGameState.depth + heuristic(newGameState);
-      visited.add(newGameState.stringRepr);
-      queue.add(newGameState);
-    }
+    GameState newGameState = new GameState(newField, toX, toY, from.depth + 1);
+    return idaIteration(newGameState, move);
   }
 
   private void swap(byte[][] field, int x1, int y1, int x2, int y2) {
@@ -375,14 +365,8 @@ class AStar {
     return counter;
   }
 
-  public Stack<GameState.Move> reconstructOrder(GameState from) {
-    Stack<GameState.Move> moves = new Stack<>();
-    GameState current = from;
-    while (current.parent != null) {
-      moves.add(current.moveFromParent);
-      current = current.parent;
-    }
-    return moves;
+  public Stack<GameState.Move> getPath() {
+    return path;
   }
 }
 
@@ -404,14 +388,14 @@ public class Main {
         }
       }
     }
-    GameState start = new GameState(null, null, field, emptyX, emptyY, 0);
-    AStar alg = new AStar(start, getTarget(), emptySign);
-    GameState finish = alg.execute();
-    if (finish == null) {
+    GameState start = new GameState(field, emptyX, emptyY, 0);
+    IDA alg = new IDA(start, getTarget(), emptySign);
+    alg.execute();
+    var path = alg.getPath();
+    if (path == null) {
       System.out.println(-1);
       return;
     }
-    var path = alg.reconstructOrder(finish);
     System.out.println(path.size());
     while (!path.isEmpty()) {
       System.out.print(path.pop());
@@ -426,6 +410,6 @@ public class Main {
       }
     }
     field[size - 1][size - 1] = emptySign;
-    return new GameState(null, null, field, (byte) (size - 1), (byte) (size - 1), 0);
+    return new GameState(field, (byte) (size - 1), (byte) (size - 1), 0);
   }
 }
