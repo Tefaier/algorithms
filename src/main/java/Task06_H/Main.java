@@ -3,6 +3,8 @@ package Task06_H;
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 class Parser {
 
@@ -130,7 +132,8 @@ class GameState implements Comparable {
   @Override
   public int compareTo(Object o) {
     if (o instanceof GameState) {
-      return value - ((GameState) o).value;
+      int diff = value - ((GameState) o).value;
+      return diff != 0 ? diff : depth - ((GameState) o).depth;
     }
     return 0;
   }
@@ -161,8 +164,10 @@ class AStar {
   private GameState target;
   private int size;
   private byte emptySign;
+  private boolean simpleMode;
 
-  public AStar(GameState source, GameState target, byte emptySign) {
+  public AStar(GameState source, GameState target, byte emptySign, boolean simpleMode) {
+    this.simpleMode = simpleMode;
     this.target = target;
     size = source.field.length;
     this.emptySign = emptySign;
@@ -218,7 +223,7 @@ class AStar {
   }
 
   private int heuristic(GameState gameState) {
-    return misplaceCount(gameState); //manhattanDist(gameState) + linearConflict(gameState);
+    return simpleMode ? misplaceCount(gameState) : manhattanDist(gameState) + linearConflict(gameState);
   }
 
   // not used currently
@@ -391,6 +396,7 @@ public class Main {
   private static byte emptySign = 0;
 
   public static void main(String[] args) {
+    //test();
     byte emptyX = -1;
     byte emptyY = -1;
     byte[][] field = new byte[size][size];
@@ -404,7 +410,7 @@ public class Main {
       }
     }
     GameState start = new GameState(null, null, field, emptyX, emptyY, 0);
-    AStar alg = new AStar(start, getTarget(), emptySign);
+    AStar alg = new AStar(start, getTarget(), emptySign, false);
     GameState finish = alg.execute();
     if (finish == null) {
       System.out.println(-1);
@@ -426,5 +432,45 @@ public class Main {
     }
     field[size - 1][size - 1] = emptySign;
     return new GameState(null, null, field, (byte) (size - 1), (byte) (size - 1), 0);
+  }
+
+  private static void test() {
+    GameState target = getTarget();
+    int iteration = 0;
+    while (true) {
+      ++iteration;
+      System.out.println(iteration + " started");
+      var arr = IntStream.range(0, size * size).boxed().collect(Collectors.toList());
+      Collections.shuffle(arr);
+      byte emptyX = -1;
+      byte emptyY = -1;
+      byte[][] field = new byte[size][size];
+      for (byte x = 0; x < size; ++x) {
+        for (byte y = 0; y < size; ++y) {
+          field[x][y] = arr.get(x * size + y).byteValue();
+          if (field[x][y] == emptySign) {
+            emptyX = x;
+            emptyY = y;
+          }
+        }
+      }
+      GameState start = new GameState(null, null, field, emptyX, emptyY, 0);
+      AStar simple = new AStar(start, target, emptySign, true);
+      AStar complex = new AStar(start, target, emptySign, false);
+      var simpleRes = simple.execute();
+      var complexRes = complex.execute();
+      if (simpleRes == null ^ complexRes == null) {
+        System.out.println("Inconsistent unable to solve");
+      }
+      if (simpleRes == null || complexRes == null) continue;
+      var simpleChain = simple.reconstructOrder(simpleRes);
+      var complexChain = complex.reconstructOrder(complexRes);
+      if (simpleChain.size() != complexChain.size()) {
+        System.out.println("Inconsistent solution size");
+      }
+      if (!simpleChain.equals(complexChain)) {
+        System.out.println("Inconsistent chains");
+      }
+    }
   }
 }
