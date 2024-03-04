@@ -211,6 +211,11 @@ public class Main {
     int outTeleport = in.nextInt();
     int teleportCount = in.nextInt();
 
+    if (deckTarget == 1) {
+      System.out.println(0);
+      return;
+    }
+
     // creates teleports
     Teleport.inCost = inTeleport;
     Teleport.outCost = outTeleport;
