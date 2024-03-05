@@ -5,10 +5,31 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.stream.IntStream;
 
+public class Main {
+  public static void main(String[] args) {
+    Parser in = new Parser(System.in);
+    int vertices = in.nextInt();
+    int edges = in.nextInt();
+    List<Integer> verticesList = IntStream.rangeClosed(1, vertices).boxed().toList();
+    List<SimpleEdge<Integer>> edgesList = new ArrayList<>();
+    for (int i = 0; i < edges; i++) {
+      int v1 = in.nextInt();
+      int v2 = in.nextInt();
+      edgesList.add(new SimpleEdge<>(v1, v2));
+    }
+    UnorderedGraph<Integer, SimpleEdge<Integer>> graph = new UnorderedGraph<>(verticesList, edgesList);
+    ClustersSearch<Integer, SimpleEdge<Integer>> clustersSearch = new ClustersSearch<>();
+    GraphHandler.dfs(graph, clustersSearch, true);
+    System.out.println(clustersSearch.clusterNumber);
+    System.out.println(clustersSearch.answer);
+  }
+}
+
 class Parser {
   private final int BUFFER_SIZE = 1 << 16;
   private DataInputStream din;
   private byte[] buffer;
+
   private int bufferPointer, bytesRead;
 
   public Parser(InputStream in) {
@@ -101,16 +122,20 @@ class Parser {
 
 }
 
-enum VertexStatus {White, Gray, Black;}
+enum VertexColors {White, Gray, Black;}
 
 interface Edge<V> {
-  V from();
 
-  V to();
+  V getFrom();
+
+  V getTo();
+
+  <E extends Edge<V>> E reversed();
 }
 
 class SimpleEdge<V> implements Edge<V> {
   private V from;
+
   private V to;
 
   public SimpleEdge(V from, V to) {
@@ -119,27 +144,33 @@ class SimpleEdge<V> implements Edge<V> {
   }
 
   @Override
-  public V from() {
+  public V getFrom() {
     return from;
   }
 
   @Override
-  public V to() {
+  public V getTo() {
     return to;
+  }
+
+  @Override
+  public SimpleEdge<V> reversed() {
+    return new SimpleEdge<>(getTo(), getFrom());
   }
 }
 
 class Graph<V, E extends Edge<V>> {
-  private int edgesNum = 0;
-  public List<V> vertexes;
+  protected int edgesNum = 0;
+  public List<V> vertices;
+
   public HashMap<V, List<E>> edgesMap = new HashMap<>();
 
-  public Graph(List<V> vertexes, List<E> edges) {
-    this.vertexes = vertexes;
+  public Graph(List<V> vertices, List<E> edges) {
+    this.vertices = vertices;
     for (E edge : edges) {
       ++edgesNum;
-      edgesMap.putIfAbsent(edge.from(), new ArrayList<>());
-      edgesMap.get(edge.from()).add(edge);
+      edgesMap.putIfAbsent(edge.getFrom(), new ArrayList<>());
+      edgesMap.get(edge.getFrom()).add(edge);
     }
   }
 
@@ -148,22 +179,38 @@ class Graph<V, E extends Edge<V>> {
   }
 
   public int getVertexCount() {
-    return vertexes.size();
+    return vertices.size();
   }
 
   public int getEdgeCount() {
     return edgesNum;
   }
+
 }
 
-interface GraphExplorer<V, E extends Edge<V>> {
+class UnorderedGraph<V, E extends Edge<V>> extends Graph<V, E> {
+  public UnorderedGraph(List<V> vertices, List<E> edges) {
+    super(vertices, edges);
+    for (E edge : edges) {
+      ++edgesNum;
+      edgesMap.putIfAbsent(edge.getTo(), new ArrayList<>());
+      edgesMap.get(edge.getTo()).add(edge.reversed());
+    }
+  }
+
+}
+
+interface GraphVisitor<V, E extends Edge<V>> {
+
+  public void initVertex(V vertex);
+
   public Stack<V> getVisitStack();
 
-  public V getRandomUnexplored();
+  public V getRandomUnexplored(List<V> vertices);
 
-  public VertexStatus getVertexStatus(V vertex);
+  public VertexColors getVertexStatus(V vertex);
 
-  public void setVertexStatus(V vertex, VertexStatus status);
+  public void setVertexStatus(V vertex, VertexColors status);
 
   public void startExploring(V vertex);
 
@@ -178,30 +225,25 @@ interface GraphExplorer<V, E extends Edge<V>> {
   public void endVertex(V vertex);
 
   public boolean isFinished();
+
 }
 
-class ClustersSearch<V, E extends Edge<V>> implements GraphExplorer<V, E> {
+class ClustersSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
   public StringBuilder answer = new StringBuilder();
   public StringBuilder lastCluster;
   public int lastClusterSize = 0;
+
   public int clusterNumber = 0;
 
-  private final Graph<V, E> graph;
   private final Stack<V> visitStack = new Stack<>();
-
   // state of each index
-  private final HashMap<V, VertexStatus> vertexStatuses = new HashMap<>();
+  private final HashMap<V, VertexColors> vertexColors = new HashMap<>();
+
   private int lastCheckedIndex = -1;
 
-  public ClustersSearch(Graph<V, E> graph) {
-    this.graph = graph;
-    prepareGraph();
-  }
-
-  public void prepareGraph() {
-    for (int i = 0; i < graph.getVertexCount(); i++) {
-      vertexStatuses.put(graph.vertexes.get(i), VertexStatus.White);
-    }
+  @Override
+  public void initVertex(V vertex) {
+    vertexColors.put(vertex, VertexColors.White);
   }
 
   @Override
@@ -210,25 +252,25 @@ class ClustersSearch<V, E extends Edge<V>> implements GraphExplorer<V, E> {
   }
 
   @Override
-  public V getRandomUnexplored() {
-    for (int i = lastCheckedIndex + 1; i < vertexStatuses.size(); i++) {
-      if (vertexStatuses.get(graph.vertexes.get(i)) == VertexStatus.White) {
+  public V getRandomUnexplored(List<V> vertices) {
+    for (int i = lastCheckedIndex + 1; i < vertexColors.size(); i++) {
+      if (vertexColors.get(vertices.get(i)) == VertexColors.White) {
         lastCheckedIndex = i;
-        return graph.vertexes.get(i);
+        return vertices.get(i);
       }
     }
-    lastCheckedIndex = vertexStatuses.size() - 1;
+    lastCheckedIndex = vertexColors.size() - 1;
     return null;
   }
 
   @Override
-  public VertexStatus getVertexStatus(V vertex) {
-    return vertexStatuses.get(vertex);
+  public VertexColors getVertexStatus(V vertex) {
+    return vertexColors.get(vertex);
   }
 
   @Override
-  public void setVertexStatus(V vertex, VertexStatus status) {
-    vertexStatuses.put(vertex, status);
+  public void setVertexStatus(V vertex, VertexColors status) {
+    vertexColors.put(vertex, status);
   }
 
   @Override
@@ -237,7 +279,7 @@ class ClustersSearch<V, E extends Edge<V>> implements GraphExplorer<V, E> {
     lastClusterSize = 1;
     lastCluster = new StringBuilder();
     lastCluster.append(vertex.toString()).append(" ");
-    setVertexStatus(vertex, VertexStatus.Gray);
+    setVertexStatus(vertex, VertexColors.Gray);
     visitStack.add(vertex);
   }
 
@@ -248,20 +290,18 @@ class ClustersSearch<V, E extends Edge<V>> implements GraphExplorer<V, E> {
 
   @Override
   public void exploreWhite(E edge) {
-    setVertexStatus(edge.to(), VertexStatus.Gray);
-    visitStack.add(edge.to());
+    setVertexStatus(edge.getTo(), VertexColors.Gray);
+    visitStack.add(edge.getTo());
     lastClusterSize++;
-    lastCluster.append(edge.to().toString()).append(" ");
+    lastCluster.append(edge.getTo().toString()).append(" ");
   }
 
   @Override
   public void exploreGray(E edge) {
-    return;
   }
 
   @Override
   public void exploreBlack(E edge) {
-    return;
   }
 
   @Override
@@ -271,85 +311,60 @@ class ClustersSearch<V, E extends Edge<V>> implements GraphExplorer<V, E> {
 
   @Override
   public boolean isFinished() {
-    return lastCheckedIndex == vertexStatuses.size() - 1;
+    return lastCheckedIndex == vertexColors.size() - 1;
   }
+
 }
 
-class DFS<V, E extends Edge<V>, G extends GraphExplorer<V, E>> {
-  public final Graph<V, E> graph;
+class GraphHandler {
 
-  public final G explorer;
-
-  private final Map<V, Integer> checkMemory = new HashMap<>();
-
-  public DFS(Graph<V, E> graph, G graphExplorer) {
-    this.graph = graph;
-    this.explorer = graphExplorer;
-    for (int i = 0; i < graph.vertexes.size(); i++) {
-      checkMemory.put(graph.vertexes.get(i), 0);
-    }
+  public static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> void dfs(Graph<V, E> graph, G graphVisitor, boolean persist) {
+    var checkMap = initGraph(graph, graphVisitor);
+    do {
+      V vertex = graphVisitor.getRandomUnexplored(graph.vertices);
+      if (vertex == null) {
+        return;
+      }
+      graphVisitor.startExploring(vertex);
+      GraphHandler.dfsOnStack(graph, graphVisitor, checkMap);
+      graphVisitor.finishExploring(vertex);
+    } while (persist && !graphVisitor.isFinished());
   }
 
-  public void startDFS() {
-    V vertex = explorer.getRandomUnexplored();
-    if (vertex == null) {
-      return;
+  private static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> Map<V, Integer> initGraph(Graph<V, E> graph, G graphVisitor) {
+    Map<V, Integer> lastCheckedEdge = new HashMap<>();
+    for (V vertex : graph.vertices) {
+      graphVisitor.initVertex(vertex);
+      lastCheckedEdge.put(vertex, 0);
     }
-    explorer.startExploring(vertex);
-    dfsOnStack();
-    explorer.finishExploring(vertex);
+    return lastCheckedEdge;
   }
 
-  public void dfsOnStack() {
-    while (!explorer.getVisitStack().isEmpty()) {
-      if (explorer.isFinished()) {
+  private static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> void dfsOnStack(Graph<V, E> graph, G visitor, Map<V, Integer> lastCheckedEdge) {
+    while (!visitor.getVisitStack().isEmpty()) {
+      if (visitor.isFinished()) {
         break;
       }
 
-      V currentVert = explorer.getVisitStack().peek();
+      V currentVert = visitor.getVisitStack().peek();
       List<E> outgoingEdges = graph.getConnected(currentVert);
-      while (checkMemory.get(currentVert) < outgoingEdges.size()) {
-        E edge = outgoingEdges.get(checkMemory.get(currentVert));
-        checkMemory.replace(currentVert, checkMemory.get(currentVert) + 1);
-        VertexStatus status = explorer.getVertexStatus(edge.to());
-        if (status == VertexStatus.White) {
-          explorer.exploreWhite(edge);
+      while (lastCheckedEdge.get(currentVert) < outgoingEdges.size()) {
+        E edge = outgoingEdges.get(lastCheckedEdge.get(currentVert));
+        lastCheckedEdge.replace(currentVert, lastCheckedEdge.get(currentVert) + 1);
+        VertexColors status = visitor.getVertexStatus(edge.getTo());
+        if (status == VertexColors.White) {
+          visitor.exploreWhite(edge);
           break;
-        } else if (status == VertexStatus.Gray) {
-          explorer.exploreGray(edge);
+        } else if (status == VertexColors.Gray) {
+          visitor.exploreGray(edge);
         } else {
-          explorer.exploreBlack(edge);
+          visitor.exploreBlack(edge);
         }
       }
-      if (currentVert.equals(explorer.getVisitStack().peek())) {
-        explorer.setVertexStatus(currentVert, VertexStatus.Black);
-        explorer.endVertex(currentVert);
+      if (currentVert.equals(visitor.getVisitStack().peek())) {
+        visitor.setVertexStatus(currentVert, VertexColors.Black);
+        visitor.endVertex(currentVert);
       }
     }
-  }
-}
-
-
-public class Main {
-  public static void main(String[] args) {
-    Parser in = new Parser(System.in);
-    int vertexes = in.nextInt();
-    int edges = in.nextInt();
-    List<Integer> vertexesList = IntStream.rangeClosed(1, vertexes).boxed().toList();
-    List<SimpleEdge<Integer>> edgesList = new ArrayList<>();
-    for (int i = 0; i < edges; i++) {
-      int v1 = in.nextInt();
-      int v2 = in.nextInt();
-      edgesList.add(new SimpleEdge<>(v1, v2));
-      edgesList.add(new SimpleEdge<>(v2, v1));
-    }
-    Graph<Integer, SimpleEdge<Integer>> graph = new Graph<>(vertexesList, edgesList);
-    ClustersSearch<Integer, SimpleEdge<Integer>> clustersSearch = new ClustersSearch<>(graph);
-    DFS<Integer, SimpleEdge<Integer>, ClustersSearch<Integer, SimpleEdge<Integer>>> dfs = new DFS<>(graph, clustersSearch);
-    while (!clustersSearch.isFinished()) {
-      dfs.startDFS();
-    }
-    System.out.println(clustersSearch.clusterNumber);
-    System.out.println(clustersSearch.answer);
   }
 }
