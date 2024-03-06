@@ -103,29 +103,29 @@ class Parser {
 record Edge(int from, int to, int price, int time) {
 }
 
+
 class Graph {
   private int vertexCount;
-  private ArrayList<Edge>[] connectionList;
+  public List<List<Edge>> connectionList = new ArrayList<>();
 
   public Graph(int vertexCount) {
     this.vertexCount = vertexCount;
-    connectionList = new ArrayList[vertexCount];
     for (int i = 0; i < vertexCount; i++) {
-      connectionList[i] = new ArrayList<>();
+      connectionList.add(new ArrayList<>());
     }
+  }
+
+  public void addEdge(Edge edge) {
+    connectionList.get(edge.from()).add(edge);
+    connectionList.get(edge.to()).add(new Edge(edge.to(), edge.from(), edge.price(), edge.time()));
   }
 
   public int getVertexCount() {
     return vertexCount;
   }
 
-  public void addEdge(Edge edge) {
-    connectionList[edge.from()].add(edge);
-    connectionList[edge.to()].add(edge);
-  }
-
-  public List<Edge> getEdges(int from) {
-    return connectionList[from];
+  public List<Edge> getConnected(Integer vertex) {
+    return connectionList.get(vertex);
   }
 }
 
@@ -134,13 +134,13 @@ public class Main {
   private static int inf = Integer.MAX_VALUE;
   private static int cost;
 
-  static class Unit implements Comparable {
+  static class UnitTime implements Comparable {
     public int source;
     public int vertex;
     public int time;
     public int price;
 
-    public Unit(int source, int vertex, int time, int price) {
+    public UnitTime(int source, int vertex, int time, int price) {
       this.source = source;
       this.vertex = vertex;
       this.time = time;
@@ -149,14 +149,31 @@ public class Main {
 
     @Override
     public int compareTo(Object o) {
-      if (o instanceof Unit) {
-        return time - ((Unit) o).time;
+      if (o instanceof UnitTime) {
+        int diff = time - ((UnitTime) o).time;
+        return diff == 0 ? price - ((UnitTime) o).price : diff;
+      }
+      return 0;
+    }
+  }
+
+  static class UnitPrice extends UnitTime {
+
+    public UnitPrice(int source, int vertex, int time, int price) {
+      super(source, vertex, time, price);
+    }
+
+    @Override
+    public int compareTo(Object o) {
+      if (o instanceof UnitTime) {
+        return price - ((UnitTime) o).price;
       }
       return 0;
     }
   }
 
   private static int[] tryReachMinCostTimeLimit(int start, int target, Graph graph, int timeLimit) {
+    cost = inf;
     int[] price = new int[graph.getVertexCount()];
     Arrays.fill(price, inf);
     // from the target
@@ -165,38 +182,32 @@ public class Main {
     int[] parents = new int[graph.getVertexCount()];
     Arrays.fill(parents, -1);
 
-    PriorityQueue<Unit> queue = new PriorityQueue<>();
-    queue.add(new Unit(-1, target, 0, 0));
+    PriorityQueue<UnitTime> queueTime = new PriorityQueue<>();
+    queueTime.add(new UnitTime(-1, target, 0, 0));
     // rules
     // target is to minimise cost
     // but there is also limit on time
 
-    Unit unit;
-    while ((unit = queue.poll()) != null) {
+    UnitTime unit;
+    while ((unit = queueTime.poll()) != null) {
       if (minTime[unit.vertex] != inf) continue;
       minTime[unit.vertex] = unit.time;
-      for (Edge edge : graph.getEdges(unit.vertex)) {
-        int to = edge.to() == unit.vertex ? edge.from() : edge.to();
-        queue.add(new Unit(0, to, unit.time + edge.time(), 0));
+      for (Edge edge : graph.getConnected(unit.vertex)) {
+        queueTime.add(new UnitTime(0, edge.to(), unit.time + edge.time(), 0));
       }
     }
 
-    queue.add(new Unit(-1, start, 0, 0));
-    while ((unit = queue.poll()) != null) {
-      // because inf is MAX_VALUE
-      if (unit.price >= price[unit.vertex]) continue;
-      // queue is sorted using time, so it means that we came to the vertex with higher price lower time
-
-      // prevent working if unit has no chance of reaching target
-      if (unit.time + minTime[unit.vertex] > timeLimit) continue;
+    PriorityQueue<UnitPrice> queuePrice = new PriorityQueue<>();
+    queuePrice.add(new UnitPrice(-1, start, 0, 0));
+    while ((unit = queuePrice.poll()) != null) {
+      if (price[unit.vertex] != inf) continue;
 
       price[unit.vertex] = unit.price;
       parents[unit.vertex] = unit.source;
 
-      for (Edge edge : graph.getEdges(unit.vertex)) {
-        if (unit.time + edge.time() <= timeLimit) {
-          int to = (edge.to() == unit.vertex) ? edge.from() : edge.to();
-          queue.add(new Unit(unit.vertex, to, unit.time + edge.time(), unit.price + edge.price()));
+      for (Edge edge : graph.getConnected(unit.vertex)) {
+        if (unit.time + edge.time() + minTime[edge.to()] <= timeLimit) {
+          queuePrice.add(new UnitPrice(unit.vertex, edge.to(), unit.time + edge.time(), unit.price + edge.price()));
         }
       }
     }
@@ -223,7 +234,7 @@ public class Main {
 
     var parents = tryReachMinCostTimeLimit(start, target, graph, timeLimit);
 
-    if (parents[target] == -1) {
+    if (parents[target] == -1 || cost == inf) {
       System.out.println(-1);
       return;
     }
