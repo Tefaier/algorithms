@@ -100,7 +100,7 @@ class Parser {
   }
 }
 
-record Edge(int from, int to, int price, int time) {
+record Edge(int from, int to, long price, long time) {
 }
 
 
@@ -130,17 +130,17 @@ class Graph {
 }
 
 public class Main {
-  private static Parser in = new Parser(System.in);
-  private static int inf = Integer.MAX_VALUE;
-  private static int cost;
+  private static final Parser in = new Parser(System.in);
+  private static final long inf = Long.MAX_VALUE;
+  private static long cost;
 
-  static class UnitTime implements Comparable {
+  static class UnitTime implements Comparable<UnitTime> {
     public int source;
     public int vertex;
-    public int time;
-    public int price;
+    public long time;
+    public long price;
 
-    public UnitTime(int source, int vertex, int time, int price) {
+    public UnitTime(int source, int vertex, long time, long price) {
       this.source = source;
       this.vertex = vertex;
       this.time = time;
@@ -148,39 +148,43 @@ public class Main {
     }
 
     @Override
-    public int compareTo(Object o) {
-      if (o instanceof UnitTime) {
-        int diff = time - ((UnitTime) o).time;
-        return diff == 0 ? price - ((UnitTime) o).price : diff;
-      }
-      return 0;
+    public int compareTo(UnitTime o) {
+      return (int) (time - o.time);
     }
   }
 
-  static class UnitPrice extends UnitTime {
+  static class UnitPrice implements Comparable<UnitPrice> {
+    public int source;
+    public int vertex;
+    public int[] path;
+    public long time;
+    public long price;
 
-    public UnitPrice(int source, int vertex, int time, int price) {
-      super(source, vertex, time, price);
+    public UnitPrice(int source, int vertex, int[] path, long time, long price) {
+      this.source = source;
+      this.vertex = vertex;
+      this.path = path;
+      this.time = time;
+      this.price = price;
     }
 
     @Override
-    public int compareTo(Object o) {
-      if (o instanceof UnitTime) {
-        return price - ((UnitTime) o).price;
-      }
-      return 0;
+    public int compareTo(UnitPrice o) {
+      long diff = price - o.price;
+      return (int) (diff == 0 ? time - o.time : diff);
     }
   }
 
-  private static int[] tryReachMinCostTimeLimit(int start, int target, Graph graph, int timeLimit) {
+  private static int[] tryReachMinCostTimeLimit(int start, int target, Graph graph, long timeLimit) {
     cost = inf;
-    int[] price = new int[graph.getVertexCount()];
+    long[] price = new long[graph.getVertexCount()];
     Arrays.fill(price, inf);
     // from the target
-    int[] minTime = new int[graph.getVertexCount()];
+    long[] minTime = new long[graph.getVertexCount()];
     Arrays.fill(minTime, inf);
-    int[] parents = new int[graph.getVertexCount()];
-    Arrays.fill(parents, -1);
+    long[] timeAchieved = new long[graph.getVertexCount()];
+    Arrays.fill(timeAchieved, inf);
+    int[] path = new int[0];
 
     PriorityQueue<UnitTime> queueTime = new PriorityQueue<>();
     queueTime.add(new UnitTime(-1, target, 0, 0));
@@ -198,30 +202,40 @@ public class Main {
     }
 
     PriorityQueue<UnitPrice> queuePrice = new PriorityQueue<>();
-    queuePrice.add(new UnitPrice(-1, start, 0, 0));
-    while ((unit = queuePrice.poll()) != null) {
-      if (price[unit.vertex] != inf) continue;
+    queuePrice.add(new UnitPrice(-1, start, new int[]{start}, 0, 0));
+    UnitPrice unitPrice;
+    while ((unitPrice = queuePrice.poll()) != null) {
+      if (
+          price[unitPrice.vertex] != inf // уже посещали
+              && timeAchieved[unitPrice.vertex] <= unitPrice.time
+      ) continue;
 
-      price[unit.vertex] = unit.price;
-      parents[unit.vertex] = unit.source;
+      if (unitPrice.vertex == target && price[target] > unitPrice.price) {
+        path = unitPrice.path;
+        cost = unitPrice.price;
+      }
 
-      for (Edge edge : graph.getConnected(unit.vertex)) {
-        if (unit.time + edge.time() + minTime[edge.to()] <= timeLimit) {
-          queuePrice.add(new UnitPrice(unit.vertex, edge.to(), unit.time + edge.time(), unit.price + edge.price()));
+      price[unitPrice.vertex] = unitPrice.price;
+      timeAchieved[unitPrice.vertex] = unitPrice.time;
+
+      for (Edge edge : graph.getConnected(unitPrice.vertex)) {
+        if (unitPrice.time + edge.time() + minTime[edge.to()] <= timeLimit) {
+          int[] newPath = Arrays.copyOf(unitPrice.path, unitPrice.path.length + 1);
+          newPath[newPath.length - 1] = edge.to();
+          queuePrice.add(new UnitPrice(unitPrice.vertex, edge.to(), newPath, unitPrice.time + edge.time(), unitPrice.price + edge.price()));
         }
       }
     }
 
-    cost = price[target];
-    return parents;
+    return path;
   }
 
   public static void main(String[] args) {
     int roomNum = in.nextInt();
-    int edgeNum = in.nextInt();
-    int timeLimit = in.nextInt();
+    long edgeNum = in.nextInt();
+    long timeLimit = in.nextInt();
     Graph graph = new Graph(roomNum);
-    for (int j = 0; j < edgeNum; j++) {
+    for (long j = 0; j < edgeNum; j++) {
       graph.addEdge(new Edge(in.nextInt() - 1, in.nextInt() - 1, in.nextInt(), in.nextInt()));
     }
     int start = 0;
@@ -232,26 +246,19 @@ public class Main {
       return;
     }
 
-    var parents = tryReachMinCostTimeLimit(start, target, graph, timeLimit);
+    var path = tryReachMinCostTimeLimit(start, target, graph, timeLimit);
 
-    if (parents[target] == -1 || cost == inf) {
-      System.out.println(-1);
+    if (path.length == 0 || cost == inf) {
+      System.out.print(-1);
       return;
     }
 
     System.out.println(cost);
-    List<Integer> chain = new ArrayList<>();
-    int cursor = target;
-    while (true) {
-      chain.add(cursor);
-      cursor = parents[cursor];
-      if (cursor == -1) {
-        break;
-      }
+    System.out.println(path.length);
+    StringBuilder pathString = new StringBuilder();
+    for (int i = 0; i < path.length; ++i) {
+      pathString.append(path[i] + 1).append(" ");
     }
-    System.out.println(chain.size());
-    for (int i = chain.size() - 1; i >= 0; --i) {
-      System.out.print(chain.get(i) + 1 + " ");
-    }
+    System.out.print(pathString);
   }
 }
