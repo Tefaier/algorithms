@@ -2,6 +2,7 @@ package Task07_F;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.util.*;
 
 class Parser {
 
@@ -99,10 +100,184 @@ class Parser {
   }
 }
 
+class Edge {
+  public int from;
+  public int to;
+
+  public Edge(int from, int to) {
+    this.from = from;
+    this.to = to;
+  }
+}
+
+class Graph {
+  private int vertexCount;
+  private ArrayList<Edge>[] connectionList;
+
+  public Graph(int vertexCount) {
+    this.vertexCount = vertexCount;
+    connectionList = new ArrayList[vertexCount];
+    for (int i = 0; i < vertexCount; i++) {
+      connectionList[i] = new ArrayList<>();
+    }
+  }
+
+  public int getVertexCount() {
+    return vertexCount;
+  }
+
+  public void addEdge(Edge edge) {
+    connectionList[edge.from].add(edge);
+    connectionList[edge.to].add(new Edge(edge.to, edge.from));
+  }
+
+  public List<Edge> getEdges(int from) {
+    return connectionList[from];
+  }
+}
+
+class LCA {
+  private class LCAVertex {
+    private LCAVertex parent;
+    private int depth;
+    private int weightFromRoot;
+    private int vertIndex;
+    private int indexInDfs;
+
+    public LCAVertex(LCAVertex parent, int depth, int weightFromRoot, int vertIndex) {
+      this.parent = parent;
+      this.depth = depth;
+      this.weightFromRoot = weightFromRoot;
+      this.vertIndex = vertIndex;
+      this.indexInDfs = -1;
+    }
+  }
+
+  private LCAVertex[] references;
+  private ArrayList<Integer> dfsList = new ArrayList<>();
+  private int[] treeList;
+  private Graph graph;
+  private int rootIndex;
+
+  public LCA(Graph graph) {
+    this.graph = graph;
+    buildLCA();
+  }
+
+  private void buildLCA() {
+    references = new LCAVertex[graph.getVertexCount()];
+    buildDFS();
+    treeList = new int[dfsList.size() * 4 + 1];
+    Arrays.fill(treeList, -1);
+    buildTree(1, 0, dfsList.size() - 1);
+
+    for (int i = 0; i < dfsList.size(); i++) {
+      int index = dfsList.get(i);
+      if (references[index].indexInDfs == -1) references[index].indexInDfs = i;
+    }
+  }
+
+  private void buildDFS() {
+    rootIndex = new Random().nextInt(graph.getVertexCount());
+    int[] visitedStory = new int[graph.getVertexCount()];
+    boolean[] used = new boolean[graph.getVertexCount()];
+    Stack<Integer> stack = new Stack<>();
+
+    stack.add(rootIndex);
+    dfsList.add(rootIndex);
+    used[rootIndex] = true;
+    references[rootIndex] = new LCAVertex(null, 0, 0, rootIndex);
+    while (!stack.empty()) {
+      int cur = stack.peek();
+      while (visitedStory[cur] < graph.getEdges(cur).size()) {
+        Edge edge = graph.getEdges(cur).get(visitedStory[cur]);
+        ++visitedStory[cur];
+        if (!used[edge.to]) {
+          LCAVertex from = references[edge.from];
+          stack.add(edge.to);
+          dfsList.add(edge.to);
+          used[edge.to] = true;
+          references[edge.to] = new LCAVertex(from, from.depth + 1, from.weightFromRoot + 1, edge.to);
+          break;
+        }
+      }
+      if (cur == stack.peek()) {
+        stack.pop();
+        if (!stack.isEmpty()) dfsList.add(stack.peek());
+      }
+    }
+  }
+
+  private void buildTree(int index, int left, int right) {
+    if (left == right)
+      // treeList contains indexes of vertex with minimum height on its region
+      treeList[index] = dfsList.get(left);
+    else {
+      int middle = (left + right) >> 1;
+      buildTree(index * 2, left, middle);
+      buildTree(index * 2 + 1, middle + 1, right);
+      if (getHeight(treeList[index * 2]) < getHeight(treeList[index * 2 + 1]))
+        treeList[index] = treeList[index * 2];
+      else
+        treeList[index] = treeList[index * 2 + 1];
+    }
+  }
+
+  private int getHeight(int index) {
+    return references[index].depth;
+  }
+
+  private int getDFSindex(int vertex) {
+    return references[vertex].indexInDfs;
+  }
+
+  public int getDistance(int v1, int v2) {
+    if (v1 == v2) {
+      return 0;
+    }
+    return references[v1].depth + references[v2].depth - 2 * references[getLCA(v1, v2)].depth;
+  }
+
+  public int getLCA(int v1, int v2) {
+    int left = getDFSindex(v1);
+    int right = getDFSindex(v2);
+    return minByTree(1, 0, dfsList.size() - 1, Math.min(left, right), Math.max(left, right));
+  }
+
+  private int minByTree(int index, int currentLeft, int currentRight, int requestLeft, int requestRight) {
+    if (currentLeft == requestLeft && currentRight == requestRight)
+      return treeList[index];
+    int middle = (currentLeft + currentRight) >> 1;
+    // go left
+    if (requestRight <= middle)
+      return minByTree(index * 2, currentLeft, middle, requestLeft, requestRight);
+    // go right
+    if (requestLeft > middle)
+      return minByTree(index * 2 + 1, middle + 1, currentRight, requestLeft, requestRight);
+    // split
+    int ans1 = minByTree(index * 2, currentLeft, middle, requestLeft, middle);
+    int ans2 = minByTree(index * 2 + 1, middle + 1, currentRight, middle + 1, requestRight);
+    // priority on minimum height
+    return getHeight(ans1) < getHeight(ans2) ? ans1 : ans2;
+  }
+}
+
 public class Main {
   private static final Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
+    int vertexNum = in.nextInt();
 
+    Graph graph = new Graph(vertexNum);
+    for (int i = 0; i < vertexNum - 1; i++) {
+      graph.addEdge(new Edge(in.nextInt() - 1, in.nextInt() - 1));
+    }
+
+    LCA lca = new LCA(graph);
+
+    int requestNum = in.nextInt();
+    for (int i = 0; i < requestNum; i++) {
+      System.out.println(lca.getDistance(in.nextInt() - 1, in.nextInt() - 1));
+    }
   }
 }
