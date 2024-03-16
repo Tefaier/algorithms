@@ -11,26 +11,26 @@ public class Main {
     Parser in = new Parser(System.in);
     int vertices = in.nextInt();
     int edges = in.nextInt();
-    List<Short> verticesList = IntStream.rangeClosed(1, vertices).boxed().map(Integer::shortValue).toList();
-    List<SimpleEdge<Short>> edgesList = new ArrayList<>();
-    List<SimpleEdge<Short>> edgesListReversed = new ArrayList<>();
+    List<Integer> verticesList = IntStream.rangeClosed(1, vertices).boxed().toList();
+    List<SimpleEdge<Integer>> edgesList = new ArrayList<>();
+    List<SimpleEdge<Integer>> edgesListReversed = new ArrayList<>();
     for (int i = 0; i < edges; i++) {
       int v1 = in.nextInt();
       int v2 = in.nextInt();
-      edgesList.add(new SimpleEdge<>((short) v1, (short) v2));
-      edgesListReversed.add(new SimpleEdge<>((short) v2, (short) v1));
+      edgesList.add(new SimpleEdge<>(v1, v2));
+      edgesListReversed.add(new SimpleEdge<>(v2, v1));
     }
 
-    Graph<Short, SimpleEdge<Short>> graph = new Graph<>(verticesList, edgesList);
-    TopSortSearch<Short, SimpleEdge<Short>> topSortSearch = new TopSortSearch<>();
-    GraphHandler.dfs(graph, topSortSearch, true);
+    Graph<Integer, SimpleEdge<Integer>> graph = new Graph<>(verticesList, edgesList);
+    TopSortSearchVisitor<Integer, SimpleEdge<Integer>> topSortSearchVisitor = new TopSortSearchVisitor<>();
+    GraphHandler.dfs(graph, topSortSearchVisitor, true);
 
-    Graph<Short, SimpleEdge<Short>> graphReversed = new Graph<>(verticesList, edgesListReversed);
-    ConnectedSearch<Short, SimpleEdge<Short>> connectedSearch = new ConnectedSearch<>(topSortSearch.outOrder);
-    GraphHandler.dfs(graphReversed, connectedSearch, true);
+    Graph<Integer, SimpleEdge<Integer>> graphReversed = new Graph<>(verticesList, edgesListReversed);
+    ConnectedSearchVisitor<Integer, SimpleEdge<Integer>> connectedSearchVisitor = new ConnectedSearchVisitor<>(topSortSearchVisitor.outOrder);
+    GraphHandler.dfs(graphReversed, connectedSearchVisitor, true);
 
-    System.out.println(connectedSearch.getComponentCount());
-    System.out.print(graph.vertices.stream().map(vert -> connectedSearch.vertComponent.get(vert).toString()).collect(Collectors.joining(" ")));
+    System.out.println(connectedSearchVisitor.getComponentCount());
+    System.out.print(graph.vertices.stream().map(vert -> connectedSearchVisitor.vertComponent.get(vert).toString()).collect(Collectors.joining(" ")));
   }
 }
 
@@ -128,14 +128,11 @@ class Parser {
     }
     return buffer[bufferPointer++];
   }
-
 }
 
 enum VertexColors {White, Gray, Black;}
 
 interface Edge<V> {
-
-
   V getFrom();
 
   V getTo();
@@ -145,7 +142,6 @@ interface Edge<V> {
 }
 
 class SimpleEdge<V> implements Edge<V> {
-
   private V from;
 
   private V to;
@@ -207,7 +203,7 @@ interface GraphVisitor<V, E extends Edge<V>> {
 
   public Stack<V> getVisitStack();
 
-  public V getRandomUnexplored(List<V> vertices);
+  public V getNextUnexplored(List<V> vertices);
 
   public VertexColors getVertexStatus(V vertex);
 
@@ -229,7 +225,7 @@ interface GraphVisitor<V, E extends Edge<V>> {
 
 }
 
-class TopSortSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
+class TopSortSearchVisitor<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 
   public List<V> outOrder = new ArrayList<>();
 
@@ -250,7 +246,7 @@ class TopSortSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
   }
 
   @Override
-  public V getRandomUnexplored(List<V> vertices) {
+  public V getNextUnexplored(List<V> vertices) {
     for (int i = lastCheckedIndex + 1; i < vertexColors.size(); i++) {
       if (vertexColors.get(vertices.get(i)) == VertexColors.White) {
         lastCheckedIndex = i;
@@ -312,7 +308,7 @@ class TopSortSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 
 }
 
-class ConnectedSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
+class ConnectedSearchVisitor<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 
   public Map<V, Integer> vertComponent = new HashMap<>();
   private List<V> toGoOrder;
@@ -324,7 +320,7 @@ class ConnectedSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 
   private int currentComponent = 0;
 
-  public ConnectedSearch(List<V> toGoOrder) {
+  public ConnectedSearchVisitor(List<V> toGoOrder) {
     this.toGoOrder = toGoOrder;
     this.lastCheckedIndex = toGoOrder.size();
   }
@@ -341,7 +337,7 @@ class ConnectedSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
   }
 
   @Override
-  public V getRandomUnexplored(List<V> vertices) {
+  public V getNextUnexplored(List<V> vertices) {
     for (int i = lastCheckedIndex - 1; i >= 0; --i) {
       if (vertexColors.get(toGoOrder.get(i)) == VertexColors.White) {
         lastCheckedIndex = i;
@@ -372,7 +368,7 @@ class ConnectedSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 
   @Override
   public void finishExploring(V vertex) {
-    
+
   }
 
   @Override
@@ -413,7 +409,7 @@ class GraphHandler {
   public static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> void dfs(Graph<V, E> graph, G graphVisitor, boolean persist) {
     var checkMap = initGraph(graph, graphVisitor);
     do {
-      V vertex = graphVisitor.getRandomUnexplored(graph.vertices);
+      V vertex = graphVisitor.getNextUnexplored(graph.vertices);
       if (vertex == null) {
         return;
       }

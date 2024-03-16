@@ -4,6 +4,37 @@ import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
 
+public class Main {
+  private static final Parser in = new Parser(System.in);
+
+  public static void main(String[] args) {
+    int vertexNum = in.nextInt();
+    int requestNum = in.nextInt();
+
+    Graph graph = new Graph(vertexNum);
+    for (int i = 1; i < vertexNum; i++) {
+      graph.addEdge(new Edge(i, in.nextInt()));
+    }
+
+    long a1 = in.nextInt();
+    long a2 = in.nextInt();
+    long x = in.nextInt();
+    long y = in.nextInt();
+    long z = in.nextInt();
+
+    LCA lca = new LCA(graph);
+
+    int prevAnswer = 0;
+    long counter = 0;
+    for (int i = 0; i < requestNum; i++) {
+      counter += lca.getDistance((int) ((a1 + prevAnswer) % vertexNum), (int) a2);
+      a1 = (x * a1 + y * a2 + z) % vertexNum;
+      a2 = (x * a2 + y * a1 + z) % vertexNum;
+    }
+    System.out.println(counter);
+  }
+}
+
 class Parser {
 
   private final int BUFFER_SIZE = 1 << 16;
@@ -261,35 +292,3 @@ class LCA {
     return getHeight(ans1) < getHeight(ans2) ? ans1 : ans2;
   }
 }
-
-public class Main {
-  private static final Parser in = new Parser(System.in);
-
-  public static void main(String[] args) {
-    int vertexNum = in.nextInt();
-    int requestNum = in.nextInt();
-
-    Graph graph = new Graph(vertexNum);
-    for (int i = 1; i < vertexNum; i++) {
-      graph.addEdge(new Edge(i, in.nextInt()));
-    }
-
-    long a1 = in.nextInt();
-    long a2 = in.nextInt();
-    long x = in.nextInt();
-    long y = in.nextInt();
-    long z = in.nextInt();
-
-    LCA lca = new LCA(graph);
-
-    int prevAnswer = 0;
-    long counter = 0;
-    for (int i = 0; i < requestNum; i++) {
-      counter += lca.getDistance((int) ((a1 + prevAnswer) % vertexNum), (int) a2);
-      a1 = (x * a1 + y * a2 + z) % vertexNum;
-      a2 = (x * a2 + y * a1 + z) % vertexNum;
-    }
-    System.out.println(counter);
-  }
-}
-

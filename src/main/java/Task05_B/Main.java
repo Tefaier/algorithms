@@ -21,7 +21,12 @@ public class Main {
     ClustersSearch<Integer, SimpleEdge<Integer>> clustersSearch = new ClustersSearch<>();
     GraphHandler.dfs(graph, clustersSearch, true);
     System.out.println(clustersSearch.clusterNumber);
-    System.out.println(clustersSearch.answer);
+    for (var cluster : clustersSearch.clusters) {
+      System.out.println(cluster.size());
+      for (var vert : cluster) {
+        System.out.print(vert + " ");
+      }
+    }
   }
 }
 
@@ -192,7 +197,6 @@ class UnorderedGraph<V, E extends Edge<V>> extends Graph<V, E> {
   public UnorderedGraph(List<V> vertices, List<E> edges) {
     super(vertices, edges);
     for (E edge : edges) {
-      ++edgesNum;
       edgesMap.putIfAbsent(edge.getTo(), new ArrayList<>());
       edgesMap.get(edge.getTo()).add(edge.reversed());
     }
@@ -206,7 +210,7 @@ interface GraphVisitor<V, E extends Edge<V>> {
 
   public Stack<V> getVisitStack();
 
-  public V getRandomUnexplored(List<V> vertices);
+  public V getNextUnexplored(List<V> vertices);
 
   public VertexColors getVertexStatus(V vertex);
 
@@ -229,8 +233,7 @@ interface GraphVisitor<V, E extends Edge<V>> {
 }
 
 class ClustersSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
-  public StringBuilder answer = new StringBuilder();
-  public StringBuilder lastCluster;
+  public List<List<V>> clusters = new ArrayList<>();
   public int lastClusterSize = 0;
 
   public int clusterNumber = 0;
@@ -252,7 +255,7 @@ class ClustersSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
   }
 
   @Override
-  public V getRandomUnexplored(List<V> vertices) {
+  public V getNextUnexplored(List<V> vertices) {
     for (int i = lastCheckedIndex + 1; i < vertexColors.size(); i++) {
       if (vertexColors.get(vertices.get(i)) == VertexColors.White) {
         lastCheckedIndex = i;
@@ -277,15 +280,15 @@ class ClustersSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
   public void startExploring(V vertex) {
     clusterNumber++;
     lastClusterSize = 1;
-    lastCluster = new StringBuilder();
-    lastCluster.append(vertex.toString()).append(" ");
+    clusters.add(new ArrayList<>());
+    clusters.get(clusters.size() - 1).add(vertex);
     setVertexStatus(vertex, VertexColors.Gray);
     visitStack.add(vertex);
   }
 
   @Override
   public void finishExploring(V vertex) {
-    answer.append(lastClusterSize).append('\n').append(lastCluster).append('\n');
+
   }
 
   @Override
@@ -293,7 +296,7 @@ class ClustersSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
     setVertexStatus(edge.getTo(), VertexColors.Gray);
     visitStack.add(edge.getTo());
     lastClusterSize++;
-    lastCluster.append(edge.getTo().toString()).append(" ");
+    clusters.get(clusters.size() - 1).add(edge.getTo());
   }
 
   @Override
@@ -321,7 +324,7 @@ class GraphHandler {
   public static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> void dfs(Graph<V, E> graph, G graphVisitor, boolean persist) {
     var checkMap = initGraph(graph, graphVisitor);
     do {
-      V vertex = graphVisitor.getRandomUnexplored(graph.vertices);
+      V vertex = graphVisitor.getNextUnexplored(graph.vertices);
       if (vertex == null) {
         return;
       }
