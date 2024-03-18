@@ -103,9 +103,11 @@ class Parser {
 }
 
 interface Edge<V> {
-  V from();
+  V getFrom();
 
-  V to();
+  V getTo();
+
+  <E extends Edge<V>> E reversed();
 }
 
 class WeightedEdge<V> implements Edge<V> {
@@ -120,31 +122,36 @@ class WeightedEdge<V> implements Edge<V> {
   }
 
   @Override
-  public V from() {
+  public V getFrom() {
     return from;
   }
 
   @Override
-  public V to() {
+  public V getTo() {
     return to;
   }
 
   public int getWeight() {
     return weight;
   }
+
+  @Override
+  public WeightedEdge<V> reversed() {
+    return new WeightedEdge<>(getTo(), getFrom(), weight);
+  }
 }
 
 class Graph<V, E extends Edge<V>> {
-  private int edgesNum = 0;
-  private List<V> vertexes;
-  private HashMap<V, List<E>> edgesMap = new HashMap<>();
+  protected int edgesNum = 0;
+  protected List<V> vertexes;
+  protected HashMap<V, List<E>> edgesMap = new HashMap<>();
 
   public Graph(List<V> vertexes, List<E> edges) {
     this.vertexes = vertexes;
     for (E edge : edges) {
       ++edgesNum;
-      edgesMap.putIfAbsent(edge.from(), new ArrayList<>());
-      edgesMap.get(edge.from()).add(edge);
+      edgesMap.putIfAbsent(edge.getFrom(), new ArrayList<>());
+      edgesMap.get(edge.getFrom()).add(edge);
     }
   }
 
@@ -163,6 +170,17 @@ class Graph<V, E extends Edge<V>> {
   public List<V> getVertexes() {
     return vertexes;
   }
+}
+
+class UnorderedGraph<V, E extends Edge<V>> extends Graph<V, E> {
+  public UnorderedGraph(List<V> vertices, List<E> edges) {
+    super(vertices, edges);
+    for (E edge : edges) {
+      edgesMap.putIfAbsent(edge.getTo(), new ArrayList<>());
+      edgesMap.get(edge.getTo()).add(edge.reversed());
+    }
+  }
+
 }
 
 interface DijkstraVisitor<V, E extends Edge<V>> {
@@ -199,6 +217,8 @@ public class Main {
 
   private static <V, E extends WeightedEdge<V>, D extends DijkstraVisitor<V, E>> void dijkstra(Graph<V, E> graph, V start, D visitor) {
     Set<V> checked = new HashSet<>();
+    HashMap<V, Integer> currentDistances = new HashMap<>();
+    graph.getVertexes().forEach(vert -> currentDistances.put(vert, Integer.MAX_VALUE));
     class Unit implements Comparable {
       public V vertex;
       public int distance;
@@ -226,8 +246,9 @@ public class Main {
       visitor.discoverVertex(unit.vertex, unit.distance);
 
       for (WeightedEdge<V> edge : graph.getConnected(unit.vertex)) {
-        if (!checked.contains(edge.to())) {
-          queue.add(new Unit(edge.to(), unit.distance + edge.getWeight()));
+        if (!checked.contains(edge.getTo()) && edge.getWeight() + currentDistances.get(unit.vertex) < currentDistances.get(edge.getTo())) {
+          currentDistances.put(edge.getTo(), edge.getWeight() + currentDistances.get(unit.vertex));
+          queue.add(new Unit(edge.getTo(), unit.distance + edge.getWeight()));
         }
       }
     }
@@ -244,9 +265,8 @@ public class Main {
         int v2 = in.nextInt();
         int weight = in.nextInt();
         edges.add(new WeightedEdge<>(v1, v2, weight));
-        edges.add(new WeightedEdge<>(v2, v1, weight));
       }
-      Graph<Integer, WeightedEdge<Integer>> graph = new Graph<>(IntStream.rangeClosed(0, roomNum - 1).boxed().toList(), edges);
+      UnorderedGraph<Integer, WeightedEdge<Integer>> graph = new UnorderedGraph<>(IntStream.rangeClosed(0, roomNum - 1).boxed().toList(), edges);
       DijkstraVisitorDistances<Integer, WeightedEdge<Integer>> visitor = new DijkstraVisitorDistances<>(graph);
       dijkstra(graph, in.nextInt(), visitor);
       System.out.println(
