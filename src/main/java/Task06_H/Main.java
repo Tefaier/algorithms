@@ -5,14 +5,14 @@ import java.io.InputStream;
 import java.util.*;
 
 public class Main {
-  private static Parser in = new Parser(System.in);
-  private static byte size = 3;
-  private static byte emptySign = 0;
+  private static final Parser in = new Parser(System.in);
+  private static final byte size = 3;
+  private static final byte emptySign = 0;
 
-  private static <V extends Vertex, A extends AStarVisitor<V>, H extends Heuristic<V>> void AStar(V from, A visitor, H heuristic) {
+  private static <V extends Vertex, A extends AStarVisitor<V>, H extends Heuristic<V>, G extends Graph<V>> void AStar(V from, V to, A visitor, H heuristic, G graph) {
     PriorityQueue<V> queue = new PriorityQueue<>();
     Set<String> visited = new HashSet<>();
-    from.value = from.depth + heuristic.calculate(from);
+    from.value = from.depth + heuristic.calculate(from, to);
     queue.add(from);
     visited.add(from.toString());
 
@@ -23,9 +23,9 @@ public class Main {
         break;
       }
 
-      for (V vert : visitor.expandVertex(current)) {
+      for (V vert : graph.getConnected(current)) {
         if (!visited.contains(vert.toString())) {
-          vert.value = vert.depth + heuristic.calculate(vert);
+          vert.value = vert.depth + heuristic.calculate(vert, to);
           visited.add(vert.toString());
           queue.add(vert);
         }
@@ -47,9 +47,10 @@ public class Main {
       }
     }
     GameState start = new GameState(null, null, field, emptyX, emptyY, 0);
-    AStarVisitorNPuzzle visitor = new AStarVisitorNPuzzle(size, emptySign, start);
+    AStarVisitorNPuzzle visitor = new AStarVisitorNPuzzle();
+    GraphGameState graph = new GraphGameState(size, emptySign, start);
     Heuristic<GameState> heuristic = new ManhattanAndLinearConflict<>(size, emptySign);
-    AStar(start, visitor, heuristic);
+    AStar(start, getTarget(), visitor, heuristic, graph);
     var path = visitor.reconstructOrder();
     if (path == null) {
       System.out.println(-1);
@@ -60,10 +61,20 @@ public class Main {
       System.out.print(path.pop());
     }
   }
+
+  private static GameState getTarget() {
+    byte[][] field = new byte[size][size];
+    for (byte x = 0; x < size; ++x) {
+      for (byte y = 0; y < size; ++y) {
+        field[x][y] = (byte) (x * size + y + 1);
+      }
+    }
+    field[size - 1][size - 1] = emptySign;
+    return new GameState(null, null, field, (byte) (size - 1), (byte) (size - 1), 0);
+  }
 }
 
 class Parser {
-
   private final int BUFFER_SIZE = 1 << 16;
   private DataInputStream din;
   private byte[] buffer;
@@ -163,7 +174,7 @@ class Vertex {
   public int value;
 }
 
-class GameState extends Vertex implements Comparable {
+class GameState extends Vertex implements Comparable<GameState> {
   public enum Move {
     U,
     D,
@@ -189,12 +200,9 @@ class GameState extends Vertex implements Comparable {
   }
 
   @Override
-  public int compareTo(Object o) {
-    if (o instanceof GameState) {
-      int diff = value - ((GameState) o).value;
-      return diff != 0 ? diff : depth - ((GameState) o).depth;
-    }
-    return 0;
+  public int compareTo(GameState o) {
+    int diff = value - o.value;
+    return diff != 0 ? diff : depth - o.depth;
   }
 
   @Override
@@ -219,12 +227,12 @@ class GameState extends Vertex implements Comparable {
 }
 
 interface Heuristic<V extends Vertex> {
-  public int calculate(V vertex);
+  public int calculate(V vertex, V to);
 }
 
 class ManhattanAndLinearConflict<V extends GameState> implements Heuristic<V> {
-  private int size;
-  private byte emptySign;
+  private final int size;
+  private final byte emptySign;
 
   public ManhattanAndLinearConflict(int size, byte emptySign) {
     this.size = size;
@@ -232,7 +240,7 @@ class ManhattanAndLinearConflict<V extends GameState> implements Heuristic<V> {
   }
 
   @Override
-  public int calculate(V vertex) {
+  public int calculate(V vertex, V to) {
     return manhattanDist(vertex) + linearConflict(vertex);
   }
 
@@ -356,50 +364,46 @@ class ManhattanAndLinearConflict<V extends GameState> implements Heuristic<V> {
 }
 
 interface AStarVisitor<V extends Vertex> {
-
-  public List<V> expandVertex(V vertex);
-
   public void setAnswer(V vertex);
 }
 
 class AStarVisitorNPuzzle implements AStarVisitor<GameState> {
-  private int size;
-  private byte emptySign;
-  private boolean isSolvable;
-
   private GameState result;
 
-  public AStarVisitorNPuzzle(int size, byte emptySign, GameState from) {
+  @Override
+  public void setAnswer(GameState vertex) {
+    result = vertex;
+  }
+
+  public Stack<GameState.Move> reconstructOrder() {
+    if (result == null) return null;
+    Stack<GameState.Move> moves = new Stack<>();
+    GameState current = result;
+    while (current.parent != null) {
+      moves.add(current.moveFromParent);
+      current = current.parent;
+    }
+    return moves;
+  }
+}
+
+interface Graph<V extends Vertex> {
+  public List<V> getConnected(V vertex);
+}
+
+class GraphGameState implements Graph<GameState> {
+  private final int size;
+  private final byte emptySign;
+  private final boolean isSolvable;
+
+  public GraphGameState(int size, byte emptySign, GameState from) {
     this.size = size;
     this.emptySign = emptySign;
     this.isSolvable = isSolvable(from);
   }
 
-  private boolean isSolvable(GameState start) {
-    byte[] linearForm = new byte[size * size];
-    int counter = 0;
-    for (int x = 0; x < size; ++x)
-      for (int y = 0; y < size; ++y)
-        linearForm[counter++] = start.field[x][y];
-
-    int invCount = countInversions(linearForm);
-    return (size % 2 == 1) ? (invCount % 2 == 0) : (start.emptyX % 2 == 0 ^ invCount % 2 == 0);
-  }
-
-  private int countInversions(byte[] arr) {
-    // should be small so just N^2 count
-    int counter = 0;
-    for (int p1 = 0; p1 < size * size; ++p1) {
-      if (arr[p1] == emptySign) continue;
-      for (int p2 = p1 + 1; p2 < size * size; ++p2) {
-        if (arr[p2] != emptySign && arr[p1] > arr[p2]) ++counter;
-      }
-    }
-    return counter;
-  }
-
   @Override
-  public List<GameState> expandVertex(GameState vertex) {
+  public List<GameState> getConnected(GameState vertex) {
     if (!isSolvable) return new ArrayList<>();
 
     byte x = vertex.emptyX;
@@ -435,19 +439,26 @@ class AStarVisitorNPuzzle implements AStarVisitor<GameState> {
     field[x2][y2] = tmp;
   }
 
-  @Override
-  public void setAnswer(GameState vertex) {
-    result = vertex;
+  private boolean isSolvable(GameState start) {
+    byte[] linearForm = new byte[size * size];
+    int counter = 0;
+    for (int x = 0; x < size; ++x)
+      for (int y = 0; y < size; ++y)
+        linearForm[counter++] = start.field[x][y];
+
+    int invCount = countInversions(linearForm);
+    return (size % 2 == 1) ? (invCount % 2 == 0) : (start.emptyX % 2 == 0 ^ invCount % 2 == 0);
   }
 
-  public Stack<GameState.Move> reconstructOrder() {
-    if (result == null) return null;
-    Stack<GameState.Move> moves = new Stack<>();
-    GameState current = result;
-    while (current.parent != null) {
-      moves.add(current.moveFromParent);
-      current = current.parent;
+  private int countInversions(byte[] arr) {
+    // should be small so just N^2 count
+    int counter = 0;
+    for (int p1 = 0; p1 < size * size; ++p1) {
+      if (arr[p1] == emptySign) continue;
+      for (int p2 = p1 + 1; p2 < size * size; ++p2) {
+        if (arr[p2] != emptySign && arr[p1] > arr[p2]) ++counter;
+      }
     }
-    return moves;
+    return counter;
   }
 }
