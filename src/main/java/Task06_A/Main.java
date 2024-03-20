@@ -6,6 +6,73 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+public class Main {
+  private static Parser in = new Parser(System.in);
+
+  private static <V, E extends WeightedEdge<V>, D extends DijkstraVisitor<V, E>> void dijkstra(Graph<V, E> graph, V start, D visitor) {
+    Set<V> checked = new HashSet<>();
+    HashMap<V, Integer> currentDistances = new HashMap<>();
+    graph.getVertexes().forEach(vert -> currentDistances.put(vert, Integer.MAX_VALUE));
+    class Unit implements Comparable {
+      public V vertex;
+      public int distance;
+
+      public Unit(V vertex, int distance) {
+        this.vertex = vertex;
+        this.distance = distance;
+      }
+
+      @Override
+      public int compareTo(Object o) {
+        if (o.getClass().isNestmateOf(Unit.class)) {
+          return distance - ((Unit) o).distance;
+        }
+        return 0;
+      }
+    }
+    PriorityQueue<Unit> queue = new PriorityQueue<>();
+    queue.add(new Unit(start, 0));
+
+    Unit unit;
+    while ((unit = queue.poll()) != null) {
+      if (checked.contains(unit.vertex)) continue;
+      checked.add(unit.vertex);
+      visitor.discoverVertex(unit.vertex, unit.distance);
+
+      for (WeightedEdge<V> edge : graph.getConnected(unit.vertex)) {
+        if (edge.getWeight() + currentDistances.get(unit.vertex) < currentDistances.get(edge.getTo())) {
+          currentDistances.put(edge.getTo(), edge.getWeight() + currentDistances.get(unit.vertex));
+          queue.add(new Unit(edge.getTo(), unit.distance + edge.getWeight()));
+        }
+      }
+    }
+  }
+
+  public static void main(String[] args) {
+    int tries = in.nextInt();
+    for (int i = 0; i < tries; i++) {
+      int roomNum = in.nextInt();
+      int edgeNum = in.nextInt();
+      List<WeightedEdge<Integer>> edges = new ArrayList<>();
+      for (int j = 0; j < edgeNum; j++) {
+        int v1 = in.nextInt();
+        int v2 = in.nextInt();
+        int weight = in.nextInt();
+        edges.add(new WeightedEdge<>(v1, v2, weight));
+      }
+      UnorderedGraph<Integer, WeightedEdge<Integer>> graph = new UnorderedGraph<>(IntStream.rangeClosed(0, roomNum - 1).boxed().toList(), edges);
+      DijkstraVisitorDistances<Integer, WeightedEdge<Integer>> visitor = new DijkstraVisitorDistances<>(graph);
+      dijkstra(graph, in.nextInt(), visitor);
+      System.out.println(
+          visitor.getDistances().entrySet().stream()
+              .sorted(Comparator.comparingInt(Map.Entry::getKey))
+              .map(entry -> entry.getValue().toString())
+              .collect(Collectors.joining(" "))
+      );
+    }
+  }
+}
+
 class Parser {
 
   private final int BUFFER_SIZE = 1 << 16;
@@ -209,72 +276,5 @@ class DijkstraVisitorDistances<V, E extends Edge<V>> implements DijkstraVisitor<
 
   public HashMap<V, Integer> getDistances() {
     return distances;
-  }
-}
-
-public class Main {
-  private static Parser in = new Parser(System.in);
-
-  private static <V, E extends WeightedEdge<V>, D extends DijkstraVisitor<V, E>> void dijkstra(Graph<V, E> graph, V start, D visitor) {
-    Set<V> checked = new HashSet<>();
-    HashMap<V, Integer> currentDistances = new HashMap<>();
-    graph.getVertexes().forEach(vert -> currentDistances.put(vert, Integer.MAX_VALUE));
-    class Unit implements Comparable {
-      public V vertex;
-      public int distance;
-
-      public Unit(V vertex, int distance) {
-        this.vertex = vertex;
-        this.distance = distance;
-      }
-
-      @Override
-      public int compareTo(Object o) {
-        if (o.getClass().isNestmateOf(Unit.class)) {
-          return distance - ((Unit) o).distance;
-        }
-        return 0;
-      }
-    }
-    PriorityQueue<Unit> queue = new PriorityQueue<>();
-    queue.add(new Unit(start, 0));
-
-    Unit unit;
-    while ((unit = queue.poll()) != null) {
-      if (checked.contains(unit.vertex)) continue;
-      checked.add(unit.vertex);
-      visitor.discoverVertex(unit.vertex, unit.distance);
-
-      for (WeightedEdge<V> edge : graph.getConnected(unit.vertex)) {
-        if (!checked.contains(edge.getTo()) && edge.getWeight() + currentDistances.get(unit.vertex) < currentDistances.get(edge.getTo())) {
-          currentDistances.put(edge.getTo(), edge.getWeight() + currentDistances.get(unit.vertex));
-          queue.add(new Unit(edge.getTo(), unit.distance + edge.getWeight()));
-        }
-      }
-    }
-  }
-
-  public static void main(String[] args) {
-    int tries = in.nextInt();
-    for (int i = 0; i < tries; i++) {
-      int roomNum = in.nextInt();
-      int edgeNum = in.nextInt();
-      List<WeightedEdge<Integer>> edges = new ArrayList<>();
-      for (int j = 0; j < edgeNum; j++) {
-        int v1 = in.nextInt();
-        int v2 = in.nextInt();
-        int weight = in.nextInt();
-        edges.add(new WeightedEdge<>(v1, v2, weight));
-      }
-      UnorderedGraph<Integer, WeightedEdge<Integer>> graph = new UnorderedGraph<>(IntStream.rangeClosed(0, roomNum - 1).boxed().toList(), edges);
-      DijkstraVisitorDistances<Integer, WeightedEdge<Integer>> visitor = new DijkstraVisitorDistances<>(graph);
-      dijkstra(graph, in.nextInt(), visitor);
-      System.out.println(
-          visitor.getDistances().entrySet().stream()
-              .sorted(Comparator.comparingInt(Map.Entry::getKey))
-              .map(entry -> entry.getValue().toString())
-              .collect(Collectors.joining(" "))
-      );
-    }
   }
 }
