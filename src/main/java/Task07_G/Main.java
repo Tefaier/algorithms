@@ -27,7 +27,8 @@ public class Main {
     int prevAnswer = 0;
     long counter = 0;
     for (int i = 0; i < requestNum; i++) {
-      counter += lca.getDistance((int) ((a1 + prevAnswer) % vertexNum), (int) a2);
+      prevAnswer = lca.getLCA((int) ((a1 + prevAnswer) % vertexNum), (int) a2);
+      counter += prevAnswer;
       a1 = (x * a1 + y * a2 + z) % vertexNum;
       a2 = (x * a2 + y * a1 + z) % vertexNum;
     }
@@ -192,6 +193,7 @@ class LCA {
 
   public LCA(Graph graph) {
     this.graph = graph;
+    rootIndex = 0;
     buildLCA();
   }
 
@@ -209,7 +211,6 @@ class LCA {
   }
 
   private void buildDFS() {
-    rootIndex = new Random().nextInt(graph.getVertexCount());
     int[] visitedStory = new int[graph.getVertexCount()];
     boolean[] used = new boolean[graph.getVertexCount()];
     Stack<Integer> stack = new Stack<>();
