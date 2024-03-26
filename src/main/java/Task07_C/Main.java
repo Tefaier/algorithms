@@ -2,13 +2,36 @@ package Task07_C;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
+import java.util.*;
+import java.util.stream.IntStream;
+
+public class Main {
+  private static final Parser in = new Parser(System.in);
+
+  public static void main(String[] args) {
+    int vertexNum = in.nextInt();
+    int edgeNum = in.nextInt();
+
+    PriorityQueue<Edge> sortedEdges = new PriorityQueue<>();
+    for (int i = 0; i < edgeNum; i++) {
+      sortedEdges.add(new Edge(in.nextInt() - 1, in.nextInt() - 1, in.nextInt()));
+    }
+
+    DSU<Integer> dsu = new DSU<>(IntStream.range(0, vertexNum).boxed().toList());
+    int weightCounter = 0;
+
+    while (dsu.compNumber() > 1) {
+      Edge currentEdge = sortedEdges.poll();
+      if (!dsu.union(currentEdge.from, currentEdge.to)) {
+        weightCounter += currentEdge.weight;
+      }
+    }
+
+    System.out.println(weightCounter);
+  }
+}
 
 class Parser {
-
   private final int BUFFER_SIZE = 1 << 16;
   private DataInputStream din;
   private byte[] buffer;
@@ -103,15 +126,17 @@ class Parser {
   }
 }
 
-class DSU {
+class DSU<V> {
   private int size;
   private int active;
 
   private int[] linkList;
   private int[] sizeList;
 
-  public DSU(int size) {
-    this.size = size;
+  private HashMap<V, Integer> positionMap = new HashMap<>();
+
+  public DSU(List<V> values) {
+    this.size = values.size();
     active = size;
     linkList = new int[size];
     sizeList = new int[size];
@@ -119,18 +144,21 @@ class DSU {
       linkList[i] = i;
       sizeList[i] = 1;
     }
+    for (int i = 0; i < size; i++) {
+      positionMap.put(values.get(i), i);
+    }
   }
 
   public int compNumber() {
     return active;
   }
 
-  public int find(int v) {
-    return goToRoot(v);
+  public int find(V v) {
+    return goToRoot(positionMap.get(v));
   }
 
   // returns true if they were in one component
-  public boolean union(int v1, int v2) {
+  public boolean union(V v1, V v2) {
     int part1 = find(v1);
     int part2 = find(v2);
 
@@ -183,30 +211,3 @@ class Edge implements Comparable<Edge> {
     return weight - o.weight;
   }
 }
-
-public class Main {
-  private static final Parser in = new Parser(System.in);
-
-  public static void main(String[] args) {
-    int vertexNum = in.nextInt();
-    int edgeNum = in.nextInt();
-
-    PriorityQueue<Edge> sortedEdges = new PriorityQueue<>();
-    for (int i = 0; i < edgeNum; i++) {
-      sortedEdges.add(new Edge(in.nextInt() - 1, in.nextInt() - 1, in.nextInt()));
-    }
-
-    DSU dsu = new DSU(vertexNum);
-    int weightCounter = 0;
-
-    while (dsu.compNumber() > 1) {
-      Edge currentEdge = sortedEdges.poll();
-      if (!dsu.union(currentEdge.from, currentEdge.to)) {
-        weightCounter += currentEdge.weight;
-      }
-    }
-
-    System.out.println(weightCounter);
-  }
-}
-
