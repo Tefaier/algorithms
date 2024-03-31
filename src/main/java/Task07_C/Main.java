@@ -12,18 +12,18 @@ public class Main {
     int vertexNum = in.nextInt();
     int edgeNum = in.nextInt();
 
-    PriorityQueue<Edge> sortedEdges = new PriorityQueue<>();
+    PriorityQueue<WeightedEdge<Integer>> sortedEdges = new PriorityQueue<>();
     for (int i = 0; i < edgeNum; i++) {
-      sortedEdges.add(new Edge(in.nextInt() - 1, in.nextInt() - 1, in.nextInt()));
+      sortedEdges.add(new WeightedEdge<>(in.nextInt() - 1, in.nextInt() - 1, in.nextInt()));
     }
 
     DSU<Integer> dsu = new DSU<>(IntStream.range(0, vertexNum).boxed().toList());
     int weightCounter = 0;
 
     while (dsu.compNumber() > 1) {
-      Edge currentEdge = sortedEdges.poll();
-      if (!dsu.union(currentEdge.from, currentEdge.to)) {
-        weightCounter += currentEdge.weight;
+      WeightedEdge<Integer> currentEdge = sortedEdges.poll();
+      if (!dsu.union(currentEdge.getFrom(), currentEdge.getTo())) {
+        weightCounter += currentEdge.getWeight();
       }
     }
 
@@ -195,19 +195,39 @@ class DSU<V> {
   }
 }
 
-class Edge implements Comparable<Edge> {
-  public int from;
-  public int to;
+interface Edge<V> {
+  V getFrom();
+
+  V getTo();
+}
+
+class WeightedEdge<V> implements Comparable<WeightedEdge>, Edge<V> {
+  public V from;
+  public V to;
   public int weight;
 
-  public Edge(int from, int to, int weight) {
+  public WeightedEdge(V from, V to, int weight) {
     this.from = from;
     this.to = to;
     this.weight = weight;
   }
 
   @Override
-  public int compareTo(Edge o) {
+  public int compareTo(WeightedEdge o) {
     return weight - o.weight;
+  }
+
+  @Override
+  public V getFrom() {
+    return from;
+  }
+
+  @Override
+  public V getTo() {
+    return to;
+  }
+
+  public int getWeight() {
+    return weight;
   }
 }

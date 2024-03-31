@@ -11,7 +11,7 @@ public class Main {
   public static void main(String[] args) {
     int vertexNum = in.nextInt();
 
-    UnorderedGraph<Integer, SimpleEdge<Integer>> graph = new UnorderedGraph<>(IntStream.range(1, vertexNum + 1).boxed().toList(), new ArrayList<>());
+    UnorderedTree<Integer, SimpleEdge<Integer>> graph = new UnorderedTree<>(IntStream.range(1, vertexNum + 1).boxed().toList(), new ArrayList<>(), 1);
     for (int i = 0; i < vertexNum - 1; i++) {
       graph.addEdge(new SimpleEdge<>(in.nextInt(), in.nextInt()));
     }
@@ -191,9 +191,22 @@ class Graph<V, E extends Edge<V>> {
   }
 }
 
-class UnorderedGraph<V, E extends Edge<V>> extends Graph<V, E> {
-  public UnorderedGraph(List<V> vertices, List<E> edges) {
+class Tree<V, E extends Edge<V>> extends Graph<V, E> {
+  protected final V root;
+
+  public Tree(List<V> vertices, List<E> edges, V root) {
     super(vertices, edges);
+    this.root = root;
+  }
+
+  public V getRoot() {
+    return root;
+  }
+}
+
+class UnorderedTree<V, E extends Edge<V>> extends Tree<V, E> {
+  public UnorderedTree(List<V> vertices, List<E> edges, V root) {
+    super(vertices, edges, root);
     for (E edge : edges) {
       edgesMap.putIfAbsent(edge.getTo(), new ArrayList<>());
       edgesMap.get(edge.getTo()).add(edge.reversed());
@@ -230,25 +243,26 @@ class LCA<V> {
   private LCAVertex<V>[] references;
   private ArrayList<Integer> dfsList = new ArrayList<>();
   private int[] treeList;
-  private Graph<V, ?> graph;
+  private Tree<V, ?> tree;
   private int rootIndex;
 
   private HashMap<V, Integer> positionMap = new HashMap<>();
 
-  public LCA(Graph<V, ?> graph) {
-    this.graph = graph;
-    for (int i = 0; i < graph.getVertexCount(); i++) {
-      positionMap.put(graph.vertices.get(i), i);
+  public LCA(Tree<V, ?> tree) {
+    this.tree = tree;
+    for (int i = 0; i < tree.getVertexCount(); i++) {
+      positionMap.put(tree.vertices.get(i), i);
     }
+    rootIndex = positionMap.get(tree.getRoot());
     buildLCA();
   }
 
   private void buildLCA() {
-    references = new LCAVertex[graph.getVertexCount()];
+    references = new LCAVertex[tree.getVertexCount()];
     buildDFS();
     treeList = new int[dfsList.size() * 4 + 1];
     Arrays.fill(treeList, -1);
-    buildTree(1, 0, dfsList.size() - 1);
+    buildSegmentTree(1, 0, dfsList.size() - 1);
 
     for (int i = 0; i < dfsList.size(); i++) {
       int index = dfsList.get(i);
@@ -257,20 +271,18 @@ class LCA<V> {
   }
 
   private void buildDFS() {
-    V randomElement = graph.getVertices().get(new Random().nextInt(graph.getVertexCount()));
-    rootIndex = positionMap.get(randomElement);
-    int[] visitedStory = new int[graph.getVertexCount()];
-    boolean[] used = new boolean[graph.getVertexCount()];
+    int[] visitedStory = new int[tree.getVertexCount()];
+    boolean[] used = new boolean[tree.getVertexCount()];
     Stack<Integer> stack = new Stack<>();
 
     stack.add(rootIndex);
     dfsList.add(rootIndex);
     used[rootIndex] = true;
-    references[rootIndex] = new LCAVertex<>(null, 0, 0, rootIndex, randomElement);
+    references[rootIndex] = new LCAVertex<>(null, 0, 0, rootIndex, tree.getRoot());
     while (!stack.empty()) {
       int current = stack.peek();
-      while (visitedStory[current] < graph.getConnected(references[current].value).size()) {
-        Edge<V> edge = graph.getConnected(references[current].value).get(visitedStory[current]);
+      while (visitedStory[current] < tree.getConnected(references[current].value).size()) {
+        Edge<V> edge = tree.getConnected(references[current].value).get(visitedStory[current]);
         ++visitedStory[current];
         int toIndex = positionMap.get(edge.getTo());
         if (!used[toIndex]) {
@@ -289,14 +301,14 @@ class LCA<V> {
     }
   }
 
-  private void buildTree(int index, int left, int right) {
+  private void buildSegmentTree(int index, int left, int right) {
     if (left == right)
       // treeList contains indexes of vertex with minimum height on its region
       treeList[index] = dfsList.get(left);
     else {
       int middle = (left + right) >> 1;
-      buildTree(index * 2, left, middle);
-      buildTree(index * 2 + 1, middle + 1, right);
+      buildSegmentTree(index * 2, left, middle);
+      buildSegmentTree(index * 2 + 1, middle + 1, right);
       if (getHeight(treeList[index * 2]) < getHeight(treeList[index * 2 + 1]))
         treeList[index] = treeList[index * 2];
       else
