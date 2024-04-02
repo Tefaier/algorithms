@@ -320,7 +320,6 @@ class ClustersSearch<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 }
 
 class GraphHandler {
-
   public static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> void dfs(Graph<V, E> graph, G graphVisitor, boolean persist) {
     var checkMap = initGraph(graph, graphVisitor);
     do {
