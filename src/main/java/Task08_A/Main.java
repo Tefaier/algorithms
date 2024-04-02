@@ -2,21 +2,50 @@ package Task08_A;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 public class Main {
   private static final Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
+    int serverNum = in.nextInt();
+    int edgeNum = in.nextInt();
 
+    ArrayList<WeightedEdge<Integer>> edges = new ArrayList<>();
+    for (int i = 0; i < edgeNum; i++) {
+      edges.add(new WeightedEdge<>(in.nextInt(), in.nextInt(), in.nextInt()));
+    }
+    Net<Integer> net = new Net<>(IntStream.range(1, serverNum + 1).boxed().toList(), edges, true);
+
+    System.out.println(FordFarkenson(net, 1, serverNum));
   }
 
-  private static int FordFarkenson() {
-
+  private static <V> int FordFarkenson(Net<V> net, V from, V to) {
+    int maxFlow = 0;
+    FilteredGraph<V, Net<V>.NetEdge> leftNet = new FilteredGraph<>(net, (edge) -> edge.getAwailableFlow() > 0);
+    //PathSearchVisitor<V, Net<V>.NetEdge> visitor = new PathSearchVisitor<>(from, to);
+    while (true) {
+      var result = GraphHandler.bfs(leftNet, from, to);
+      if (result == null) {
+        return maxFlow;
+      }
+      ArrayList<Net<V>.NetEdge> path = new ArrayList<>();
+      V current = to;
+      while (result.containsKey(current)) {
+        var edge = result.get(current);
+        path.add(edge);
+        current = edge.getFrom();
+      }
+      maxFlow += net.pushFlowByPath(path);
+      /*GraphHandler.dfs(leftNet, visitor, false);
+      if (!visitor.isFinished()) {
+        break;
+      }
+      maxFlow += net.pushFlowByPath(visitor.path);
+      */
+    }
   }
 }
 
@@ -204,7 +233,7 @@ class Net<V> implements Graph<V, Net<V>.NetEdge> {
   protected boolean orientated;
   protected List<V> vertices;
   protected List<? extends WeightedEdge<V>> initialEdges;
-  protected List<NetEdge> edges;
+  protected List<NetEdge> edges = new ArrayList<>();
   protected HashMap<V, List<NetEdge>> edgesMap = new HashMap<>();
 
   public Net(List<V> vertices, List<? extends WeightedEdge<V>> edges, boolean orientated) {
@@ -216,11 +245,13 @@ class Net<V> implements Graph<V, Net<V>.NetEdge> {
 
   public <E extends WeightedEdge<V>> void addEdge(E edge) {
     // forward
+    edges.add(new NetEdge(edge.getFrom(), edge.getTo(), edge.getWeight(), 0, edgesNum));
     edgesMap.putIfAbsent(edge.getFrom(), new ArrayList<>());
-    edgesMap.get(edge.getFrom()).add(new NetEdge(edge.getFrom(), edge.getTo(), edge.getWeight(), 0, edgesNum));
+    edgesMap.get(edge.getFrom()).add(edges.get(edges.size() - 1));
     // backward
+    edges.add(new NetEdge(edge.getTo(), edge.getFrom(), orientated ? 0 : edge.getWeight(), 0, edgesNum));
     edgesMap.putIfAbsent(edge.getTo(), new ArrayList<>());
-    edgesMap.get(edge.getTo()).add(new NetEdge(edge.getTo(), edge.getFrom(), orientated ? 0 : edge.getWeight(), 0, edgesNum));
+    edgesMap.get(edge.getTo()).add(edges.get(edges.size() - 1));
     ++edgesNum;
   }
 
@@ -238,6 +269,23 @@ class Net<V> implements Graph<V, Net<V>.NetEdge> {
 
   public List<V> getVertices() {
     return vertices;
+  }
+
+  public int pushFlowByPath(List<NetEdge> path) {
+    int minFlow = Integer.MAX_VALUE;
+    for (int i = 0; i < path.size(); i++) {
+      minFlow = Math.min(minFlow, path.get(i).getAwailableFlow());
+    }
+    // apply flow
+    for (int i = 0; i < path.size(); i++) {
+      path.get(i).flow += minFlow;
+      getReversedEdge(path.get(i)).flow -= minFlow;
+    }
+    return minFlow;
+  }
+
+  private NetEdge getReversedEdge(NetEdge edge) {
+    return edges.get(edges.get(edge.index * 2) == edge ? edge.index * 2 + 1 : edge.index * 2);
   }
 }
 
@@ -334,20 +382,26 @@ class PathSearchVisitor<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 
   @Override
   public void startExploring(V vertex) {
+    vertexColors.clear();
+    visitStack.clear();
+    path.clear();
+    isFinished = false;
+
     setVertexStatus(vertex, VertexColors.Gray);
     visitStack.add(vertex);
   }
 
   @Override
   public void finishExploring(V vertex) {
-    isFinished = true;
   }
 
   @Override
   public void exploreWhite(E edge) {
     setVertexStatus(edge.getTo(), VertexColors.Gray);
     visitStack.add(edge.getTo());
-    path.add(edge);
+    if (!isFinished) {
+      path.add(edge);
+    }
     if (edge.getTo() == target) {
       isFinished = true;
     }
@@ -365,7 +419,7 @@ class PathSearchVisitor<V, E extends Edge<V>> implements GraphVisitor<V, E> {
   public void endVertex(V vertex) {
     setVertexStatus(vertex, VertexColors.Black);
     visitStack.pop();
-    if (!isFinished) {
+    if (!isFinished && !path.isEmpty()) {
       path.remove(path.size() - 1);
     }
   }
@@ -378,6 +432,29 @@ class PathSearchVisitor<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 }
 
 class GraphHandler {
+  public static <V, E extends Edge<V>> HashMap<V, E> bfs(Graph<V, E> graph, V from, V to) {
+    Queue<V> queue = new ArrayDeque<>();
+    queue.add(from);
+    Set<V> visited = new HashSet<>();
+    HashMap<V, E> parent = new HashMap<>();
+    visited.add(from);
+
+    V vertex;
+    while ((vertex = queue.poll()) != null) {
+      for (var edge : graph.getConnected(vertex)) {
+        if (!visited.contains(edge.getTo())) {
+          parent.put(edge.getTo(), edge);
+          visited.add(edge.getTo());
+          queue.add(edge.getTo());
+        }
+        if (edge.getTo() == to) {
+          return parent;
+        }
+      }
+    }
+    return null;
+  }
+
   public static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> void dfs(Graph<V, E> graph, G graphVisitor, boolean persist) {
     do {
       V vertex = graphVisitor.getNextUnexplored(graph.getVertices());
