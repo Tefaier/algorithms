@@ -1,13 +1,11 @@
 package Task08_G;
 
-import java.io.DataInputStream;
-import java.io.InputStream;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class Main {
-  private static final Parser in = new Parser(System.in);
+  private static final Scanner in = new Scanner(System.in);
 
   public static void main(String[] args) {
     int lSize = in.nextInt();
@@ -25,101 +23,6 @@ public class Main {
     var result = GraphHandler.kuhn(graph, IntStream.range(1, lSize + 1).boxed().toList(), IntStream.range(lSize + 1, lSize + rSize + 1).boxed().toList());
     System.out.println(result.size());
     System.out.println(result.stream().map(edge -> edge.getTo() > lSize ? edge.getFrom() + " " + (edge.getTo() - lSize) : edge.getTo() + " " + (edge.getFrom() - lSize)).collect(Collectors.joining("\n")));
-  }
-}
-
-class Parser {
-  private final int BUFFER_SIZE = 1 << 16;
-  private DataInputStream din;
-  private byte[] buffer;
-  private int bufferPointer, bytesRead;
-
-  public Parser(InputStream in) {
-    din = new DataInputStream(in);
-    buffer = new byte[BUFFER_SIZE];
-    bufferPointer = bytesRead = 0;
-  }
-
-  public String nextString(int maxSize) {
-    byte[] ch = new byte[maxSize];
-    int point = 0;
-    try {
-      byte c = read();
-      while (c == ' ' || c == '\n' || c == '\r') {
-        c = read();
-      }
-      while (c != ' ' && c != '\n' && c != '\r') {
-        ch[point++] = c;
-        c = read();
-      }
-    } catch (Exception e) {
-    }
-    return new String(ch, 0, point);
-  }
-
-  public int nextInt() {
-    int ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
-    }
-    return ret;
-  }
-
-  public long nextLong() {
-    long ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
-    }
-    return ret;
-  }
-
-  private void fillBuffer() {
-    try {
-      bytesRead = din.read(buffer, bufferPointer = 0, BUFFER_SIZE);
-    } catch (Exception e) {
-    }
-    if (bytesRead == -1) buffer[0] = -1;
-  }
-
-  private byte read() {
-    if (bufferPointer == bytesRead) {
-      fillBuffer();
-    }
-    return buffer[bufferPointer++];
   }
 }
 
