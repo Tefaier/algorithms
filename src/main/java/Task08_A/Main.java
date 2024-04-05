@@ -25,27 +25,15 @@ public class Main {
   private static <V> int FordFarkenson(Net<V> net, V from, V to) {
     int maxFlow = 0;
     FilteredGraph<V, Net<V>.NetEdge> leftNet = new FilteredGraph<>(net, (edge) -> edge.getAwailableFlow() > 0);
-    //PathSearchVisitor<V, Net<V>.NetEdge> visitor = new PathSearchVisitor<>(from, to);
+    PathSearchVisitor<V, Net<V>.NetEdge> visitor = new PathSearchVisitor<>(from, to);
     while (true) {
-      var result = GraphHandler.bfs(leftNet, from, to);
-      if (result == null) {
-        return maxFlow;
-      }
-      ArrayList<Net<V>.NetEdge> path = new ArrayList<>();
-      V current = to;
-      while (result.containsKey(current)) {
-        var edge = result.get(current);
-        path.add(edge);
-        current = edge.getFrom();
-      }
-      maxFlow += net.pushFlowByPath(path);
-      /*GraphHandler.dfs(leftNet, visitor, false);
+      GraphHandler.dfs(leftNet, visitor, false);
       if (!visitor.isFinished()) {
         break;
       }
       maxFlow += net.pushFlowByPath(visitor.path);
-      */
     }
+    return maxFlow;
   }
 }
 
@@ -432,29 +420,6 @@ class PathSearchVisitor<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 }
 
 class GraphHandler {
-  public static <V, E extends Edge<V>> HashMap<V, E> bfs(Graph<V, E> graph, V from, V to) {
-    Queue<V> queue = new ArrayDeque<>();
-    queue.add(from);
-    Set<V> visited = new HashSet<>();
-    HashMap<V, E> parent = new HashMap<>();
-    visited.add(from);
-
-    V vertex;
-    while ((vertex = queue.poll()) != null) {
-      for (var edge : graph.getConnected(vertex)) {
-        if (!visited.contains(edge.getTo())) {
-          parent.put(edge.getTo(), edge);
-          visited.add(edge.getTo());
-          queue.add(edge.getTo());
-        }
-        if (edge.getTo() == to) {
-          return parent;
-        }
-      }
-    }
-    return null;
-  }
-
   public static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> void dfs(Graph<V, E> graph, G graphVisitor, boolean persist) {
     do {
       V vertex = graphVisitor.getNextUnexplored(graph.getVertices());
