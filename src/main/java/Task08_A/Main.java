@@ -1,13 +1,11 @@
 package Task08_A;
 
-import java.io.DataInputStream;
-import java.io.InputStream;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 public class Main {
-  private static final Parser in = new Parser(System.in);
+  private static final Scanner in = new Scanner(System.in);
 
   public static void main(String[] args) {
     int serverNum = in.nextInt();
@@ -19,116 +17,7 @@ public class Main {
     }
     Net<Integer> net = new Net<>(IntStream.range(1, serverNum + 1).boxed().toList(), edges, true);
 
-    System.out.println(FordFarkenson(net, 1, serverNum));
-  }
-
-  private static <V> int FordFarkenson(Net<V> net, V from, V to) {
-    int maxFlow = 0;
-    FilteredGraph<V, Net<V>.NetEdge> leftNet = new FilteredGraph<>(net, (edge) -> edge.getAwailableFlow() > 0);
-    PathSearchVisitor<V, Net<V>.NetEdge> visitor = new PathSearchVisitor<>(from, to);
-    while (true) {
-      GraphHandler.dfs(leftNet, visitor, false);
-      if (!visitor.isFinished()) {
-        break;
-      }
-      maxFlow += net.pushFlowByPath(visitor.path);
-    }
-    return maxFlow;
-  }
-}
-
-class Parser {
-  private final int BUFFER_SIZE = 1 << 16;
-  private DataInputStream din;
-  private byte[] buffer;
-  private int bufferPointer, bytesRead;
-
-  public Parser(InputStream in) {
-    din = new DataInputStream(in);
-    buffer = new byte[BUFFER_SIZE];
-    bufferPointer = bytesRead = 0;
-  }
-
-  public String nextString(int maxSize) {
-    byte[] ch = new byte[maxSize];
-    int point = 0;
-    try {
-      byte c = read();
-      while (c == ' ' || c == '\n' || c == '\r') {
-        c = read();
-      }
-      while (c != ' ' && c != '\n' && c != '\r') {
-        ch[point++] = c;
-        c = read();
-      }
-    } catch (Exception e) {
-    }
-    return new String(ch, 0, point);
-  }
-
-  public int nextInt() {
-    int ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
-    }
-    return ret;
-  }
-
-  public long nextLong() {
-    long ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
-    }
-    return ret;
-  }
-
-  private void fillBuffer() {
-    try {
-      bytesRead = din.read(buffer, bufferPointer = 0, BUFFER_SIZE);
-    } catch (Exception e) {
-    }
-    if (bytesRead == -1) buffer[0] = -1;
-  }
-
-  private byte read() {
-    if (bufferPointer == bytesRead) {
-      fillBuffer();
-    }
-    return buffer[bufferPointer++];
+    System.out.println(GraphHandler.FordFarkenson(net, 1, serverNum));
   }
 }
 
@@ -420,6 +309,20 @@ class PathSearchVisitor<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 }
 
 class GraphHandler {
+  public static <V> int FordFarkenson(Net<V> net, V from, V to) {
+    int maxFlow = 0;
+    FilteredGraph<V, Net<V>.NetEdge> leftNet = new FilteredGraph<>(net, (edge) -> edge.getAwailableFlow() > 0);
+    PathSearchVisitor<V, Net<V>.NetEdge> visitor = new PathSearchVisitor<>(from, to);
+    while (true) {
+      GraphHandler.dfs(leftNet, visitor, false);
+      if (!visitor.isFinished()) {
+        break;
+      }
+      maxFlow += net.pushFlowByPath(visitor.path);
+    }
+    return maxFlow;
+  }
+
   public static <V, E extends Edge<V>, G extends GraphVisitor<V, E>> void dfs(Graph<V, E> graph, G graphVisitor, boolean persist) {
     do {
       V vertex = graphVisitor.getNextUnexplored(graph.getVertices());
