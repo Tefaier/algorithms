@@ -3,28 +3,92 @@ package Task08_H;
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class Main {
   private static final Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
-    int lSize = in.nextInt();
-    int rSize = in.nextInt();
+    int xDimension = in.nextInt();
+    int yDimension = in.nextInt();
+    int price2_1 = in.nextInt();
+    int price1_1 = in.nextInt();
 
-    List<SimpleEdge<Integer>> edges = new ArrayList<>();
-    for (int i = 1; i <= lSize; i++) {
-      int input;
-      while ((input = in.nextInt()) != 0) {
-        edges.add(new SimpleEdge<>(i, input + lSize));
+    boolean[][] filledMap = new boolean[xDimension][yDimension];
+    int emptyCounter = 0;
+    for (int x = 0; x < xDimension; x++) {
+      String line = in.nextString(yDimension + 2);
+      for (int y = 0; y < line.length(); y++) {
+        boolean isFilled = line.charAt(y) == '*';
+        filledMap[x][y] = isFilled;
+        emptyCounter += isFilled ? 0 : 1;
       }
     }
 
-    UnorderedGraph<Integer, SimpleEdge<Integer>> graph = new UnorderedGraph<>(IntStream.range(1, lSize + rSize + 1).boxed().toList(), edges);
-    var result = GraphHandler.kuhn(graph, IntStream.range(1, lSize + 1).boxed().toList(), IntStream.range(lSize + 1, lSize + rSize + 1).boxed().toList());
-    System.out.println(result.size());
-    System.out.println(result.stream().map(edge -> edge.getTo() > lSize ? edge.getFrom() + " " + (edge.getTo() - lSize) : edge.getTo() + " " + (edge.getFrom() - lSize)).collect(Collectors.joining("\n")));
+    // priority on 1x1 tiles
+    if (price1_1 * 2 <= price2_1) {
+      // if it's better to fill everything with them
+      if (price1_1 < 0) emptyCounter = xDimension * yDimension;
+      System.out.println(emptyCounter * price1_1);
+      return;
+    }
+
+    // if try full replacement on 2x1
+    if (price2_1 < 0) {
+      // full replace is allowed because 1x1 is also negative
+      if (price1_1 <= 0) {
+        emptyCounter = xDimension * yDimension;
+        System.out.println(emptyCounter % 2 == 0 ? price2_1 * emptyCounter / 2 : price1_1 + price2_1 * (emptyCounter - 1) / 2);
+        return;
+      }
+      // full replacement but avoid as many 1x1 as possible
+      // full cover with 2x1 because field is even
+      if (xDimension * yDimension % 2 == 0) {
+        System.out.println(price2_1 * xDimension * yDimension / 2);
+        return;
+      }
+      // try to leave one old empty and cover other tiles with 2x1
+      boolean locatedIdeal = false;
+      for (int x = 0; x < xDimension; x++) {
+        for (int y = 0; y < yDimension; y++) {
+          if (filledMap[x][y] && (x % 2 == y % 2)) {
+            locatedIdeal = true;
+            break;
+          }
+        }
+        if (locatedIdeal) break;
+      }
+      if (locatedIdeal) {
+        System.out.println(price2_1 * (xDimension * yDimension - 1) / 2);
+        return;
+      }
+      // problem of positioning
+      if (price2_1 + price1_1 < 0 || true) {
+        // brute placement
+        System.out.println(price1_1 + price2_1 * (xDimension * yDimension - 1) / 2);
+        return;
+      }
+      // if possible so that 3 impossible covers are at old tiles
+    }
+
+    ArrayList<SimpleEdge<Integer>> edges = new ArrayList<>();
+    for (int x = 0; x < xDimension; x++) {
+      for (int y = 0; y < yDimension; y++) {
+        if (filledMap[x][y]) continue;
+        int pos = x * yDimension + y;
+
+        if (x < xDimension - 1 && !filledMap[x + 1][y]) {
+          edges.add(new SimpleEdge<>(pos, pos + yDimension));
+        }
+        if (y < yDimension - 1 && !filledMap[x][y + 1]) {
+          edges.add(new SimpleEdge<>(pos, pos + 1));
+        }
+      }
+    }
+
+    UnorderedGraph<Integer, SimpleEdge<Integer>> graph = new UnorderedGraph<>(IntStream.range(0, xDimension * yDimension).boxed().toList(), edges);
+    var result = GraphHandler.kuhn(graph);
+    System.out.println(result.size() * price2_1 + (emptyCounter - result.size() * 2) * price1_1);
   }
 }
 
