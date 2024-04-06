@@ -2,51 +2,14 @@ package Task08_D;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class Main {
   private static final Parser in = new Parser(System.in);
 
-  private static void test() {
-    int iteration = 0;
-    Random random = new Random();
-    float maxSeconds = 0;
-    while (true) {
-      iteration++;
-      Timestamp timeStart = new Timestamp(System.currentTimeMillis());
-      int stationsNum = random.nextInt(2, 20);
-      int edgeNum = random.nextInt(1, 100);
-      GraphHandler.setup(stationsNum + 1);
-
-      ArrayList<WeightedEdge<Integer>> edges = new ArrayList<>();
-      for (int i = 0; i < edgeNum; i++) {
-        int from = random.nextInt(1, stationsNum + 1);
-        int to = random.nextInt(1, stationsNum + 1);
-        if (from == to) continue;
-        edges.add(new WeightedEdge<>(from, to, random.nextInt(1, 100)));
-      }
-      Net net = new Net(IntStream.range(1, stationsNum + 1).boxed().toList(), edges, true);
-      long max = dinic(net, 1, stationsNum);
-
-      Timestamp timeFinish = new Timestamp(System.currentTimeMillis());
-      float seconds = Math.round((timeFinish.getTime() - timeStart.getTime())) / 1000f;
-      maxSeconds = Math.max(maxSeconds, seconds);
-      if (seconds < 0.01) {
-        System.out.print("+");
-        continue;
-      }
-      System.out.println();
-      System.out.println("Iteration: " + iteration + " duration: " + seconds + " flow: " + max + " input: " + stationsNum + " " + edgeNum); //+ " <" + edges.stream().map(edge -> edge.getFrom() + " " + edge.getTo() + " " + edge.getWeight()).collect(Collectors.joining(" | ")) + ">");
-    }
-  }
-
   public static void main(String[] args) {
-    test();
     int stationsNum = in.nextInt();
     int edgeNum = in.nextInt();
     GraphHandler.setup(stationsNum + 1);
@@ -55,8 +18,9 @@ public class Main {
     for (int i = 0; i < edgeNum; i++) {
       edges.add(new WeightedEdge<>(in.nextInt(), in.nextInt(), in.nextInt()));
     }
+    int maxCapacity = edges.stream().map(WeightedEdge::getWeight).max(Integer::compareTo).get();
     Net net = new Net(IntStream.range(1, stationsNum + 1).boxed().toList(), edges, true);
-    long max = dinic(net, 1, stationsNum);
+    long max = EdmondKarp(net, 1, stationsNum, maxCapacity);
 
     System.out.println(max);
     for (int i = 0; i < net.edges.size(); i += 2) {
@@ -64,42 +28,32 @@ public class Main {
     }
   }
 
-  private static long dinic(Net net, int from, int to) {
+  private static long EdmondKarp(Net net, int from, int to, int capacityLimit) {
     long maxFlow = 0;
-    while (true) {
-      var result = dinicIteration(net, from, to);
-      if (result == 0) return maxFlow;
-      maxFlow += result;
+    int scale = (int) Math.pow(2, Math.floor(Math.log(capacityLimit) / Math.log(2)));
+    List<Net.NetEdge> path;
+    while (scale >= 1) {
+      int finalScale = scale;
+      while ((path = constructPath(GraphHandler.bfs(net, from, to, (edge) -> edge.getAwailableFlow() >= finalScale), to)) != null) {
+        maxFlow += net.pushFlowByPath(path);
+      }
+      scale /= 2;
     }
+    return maxFlow;
   }
 
-  private static long dinicIteration(Net net, int from, int to) {
-    long answer = 0;
-
-    // didn't reach target
-    if (!GraphHandler.bfs(net, from, to, (edge) -> edge.getAwailableFlow() > 0)) {
-      return answer;
+  private static List<Net.NetEdge> constructPath(List<Net.NetEdge> sourceList, int from) {
+    if (sourceList == null) {
+      return null;
     }
-
-    while (true) {
-      GraphHandler.dfsFlowEdges.clear();
-      int delta = GraphHandler.dfsFlow(
-          net,
-          from,
-          to,
-          (edge) ->
-              (
-                  GraphHandler.heights[edge.getTo()] == GraphHandler.heights[edge.getFrom()] + 1
-                      && edge.getAwailableFlow() > 0
-              ),
-          Integer.MAX_VALUE);
-      if (delta == 0) break;
-
-      net.pushFlowByPath(GraphHandler.dfsFlowEdges);
-      answer += delta;
+    ArrayList<Net.NetEdge> path = new ArrayList<>();
+    Integer current = from;
+    while (sourceList.get(current) != null) {
+      var edge = sourceList.get(current);
+      path.add(edge);
+      current = edge.getFrom();
     }
-
-    return answer;
+    return path;
   }
 }
 
@@ -290,11 +244,11 @@ class Net implements Graph<Integer, Net.NetEdge> {
   protected int edgesNum = 0;
   protected boolean orientated;
   protected List<Integer> vertices;
-  protected List<WeightedEdge<Integer>> initialEdges;
+  protected List<? extends WeightedEdge<Integer>> initialEdges;
   protected List<NetEdge> edges = new ArrayList<>();
   protected ArrayList<List<NetEdge>> connectionList = new ArrayList<>();
 
-  public Net(List<Integer> vertices, List<WeightedEdge<Integer>> edges, boolean orientated) {
+  public Net(List<Integer> vertices, List<? extends WeightedEdge<Integer>> edges, boolean orientated) {
     this.vertices = vertices;
     this.initialEdges = edges;
     this.orientated = orientated;
@@ -304,7 +258,7 @@ class Net implements Graph<Integer, Net.NetEdge> {
     edges.forEach(this::addEdge);
   }
 
-  public void addEdge(WeightedEdge<Integer> edge) {
+  public <E extends WeightedEdge<Integer>> void addEdge(E edge) {
     // forward
     edges.add(new NetEdge(edge.getFrom(), edge.getTo(), edge.getWeight(), 0, edgesNum));
     connectionList.get(edge.getFrom()).add(edges.get(edges.size() - 1));
@@ -351,55 +305,37 @@ class Net implements Graph<Integer, Net.NetEdge> {
 class GraphHandler {
   private static int iteration = 0;
   private static int[] iterationVisit;
-  public static int[] heights;
-  public static ArrayList<Net.NetEdge> dfsFlowEdges = new ArrayList<>();
+  private static ArrayList<Net.NetEdge> usedEdges;
 
   public static void setup(int values) {
-    iteration = 0;
     iterationVisit = new int[values];
-    heights = new int[values];
-  }
-
-  public static int dfsFlow(Net net, int from, int to, Predicate<Net.NetEdge> limit, int min) {
-    if (min == 0) return 0;
-    if (from == to) return min;
-
-    for (var edge : net.getConnected(from)) {
-      if (!limit.test(edge)) continue;
-
-      int delta = dfsFlow(net, edge.getTo(), to, limit, Math.min(min, edge.getAwailableFlow()));
-
-      if (delta > 0) {
-        dfsFlowEdges.add(edge);
-        return delta;
-      }
+    usedEdges = new ArrayList<>();
+    for (int i = 0; i < values; i++) {
+      usedEdges.add(null);
     }
-    return 0;
   }
 
-  public static boolean bfs(Graph<Integer, Net.NetEdge> graph, int from, int to, Predicate<Net.NetEdge> limit) {
-    Arrays.fill(heights, 0);
+  public static ArrayList<Net.NetEdge> bfs(Graph<Integer, Net.NetEdge> graph, int from, int to, Predicate<Net.NetEdge> limit) {
     iteration++;
     Queue<Integer> queue = new ArrayDeque<>();
     queue.add(from);
     iterationVisit[from] = iteration;
-    boolean reachedEnd = false;
 
     Integer vertex;
     while ((vertex = queue.poll()) != null) {
       for (var edge : graph.getConnected(vertex)) {
         if (!limit.test(edge)) continue;
-        // check first visit in this iteration
         if (iterationVisit[edge.getTo()] < iteration) {
-          heights[edge.getTo()] = heights[edge.getFrom()] + 1;
+          usedEdges.set(edge.getTo(), edge);
+          usedEdges.set(edge.getTo(), edge);
           iterationVisit[edge.getTo()] = iteration;
           queue.add(edge.getTo());
-          if (edge.getTo() == to) {
-            reachedEnd = true;
-          }
+        }
+        if (edge.getTo() == to) {
+          return usedEdges;
         }
       }
     }
-    return reachedEnd;
+    return null;
   }
 }
