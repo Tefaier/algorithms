@@ -2,106 +2,50 @@ package Task09.Task09_A;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Scanner;
 
 public class Main {
-  private static Parser in = new Parser(System.in);
+  private static Scanner in = new Scanner(System.in);
 
   public static void main(String[] args) {
+    int wordNum = in.nextInt();
+    in.nextLine();
+    String[] words = in.nextLine().split(" ");
+    StringBuilder base = new StringBuilder(words[0]);
+    for (int i = 1; i < words.length; ++i) {
+      var result = StringHandler.prefixFunction(base, words[i], true);
 
+      base.append(words[i].substring(result[result.length - 1]));
+    }
+    System.out.println(base);
   }
 }
 
-class Parser {
-  private final int BUFFER_SIZE = 1 << 16;
-  private DataInputStream din;
-  private byte[] buffer;
-  private int bufferPointer, bytesRead;
+class StringHandler {
+  public static int[] prefixFunction(StringBuilder suffixString, String prefixString, boolean endPriotity) {
+    int[] start = new int[prefixString.length()];
 
-  public Parser(InputStream in) {
-    din = new DataInputStream(in);
-    buffer = new byte[BUFFER_SIZE];
-    bufferPointer = bytesRead = 0;
-  }
-
-  public String nextString(int maxSize) {
-    byte[] ch = new byte[maxSize];
-    int point = 0;
-    try {
-      byte c = read();
-      while (c == ' ' || c == '\n' || c == '\r') {
-        c = read();
-      }
-      while (c != ' ' && c != '\n' && c != '\r') {
-        ch[point++] = c;
-        c = read();
-      }
-    } catch (Exception e) {
+    for (int i = 1; i < start.length; ++i) {
+      int current = start[i - 1];
+      while (prefixString.charAt(i) != prefixString.charAt(current) && current > 0)
+        current = start[current - 1];
+      if (prefixString.charAt(i) == prefixString.charAt(current))
+        start[i] = current + 1;
     }
-    return new String(ch, 0, point);
-  }
+    if (suffixString == null) return start;
 
-  public int nextInt() {
-    int ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
+    int[] end = new int[endPriotity ? Math.min(suffixString.length(), prefixString.length()) : suffixString.length()];
+    int from = suffixString.length() - end.length;
+    end[0] = suffixString.charAt(from) == prefixString.charAt(0) ? 1 : 0;
+    for (int i = from + 1; i < suffixString.length(); ++i) {
+      int current = end[i - from - 1];
+      while ((current == prefixString.length() || suffixString.charAt(i) != prefixString.charAt(current)) && current > 0)
+        current = start[current - 1];
+      if (suffixString.charAt(i) == prefixString.charAt(current))
+        end[i - from] = current + 1;
     }
-    return ret;
-  }
 
-  public long nextLong() {
-    long ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
-    }
-    return ret;
-  }
-
-  private void fillBuffer() {
-    try {
-      bytesRead = din.read(buffer, bufferPointer = 0, BUFFER_SIZE);
-    } catch (Exception e) {
-    }
-    if (bytesRead == -1) buffer[0] = -1;
-  }
-
-  private byte read() {
-    if (bufferPointer == bytesRead) {
-      fillBuffer();
-    }
-    return buffer[bufferPointer++];
+    return end;
   }
 }
