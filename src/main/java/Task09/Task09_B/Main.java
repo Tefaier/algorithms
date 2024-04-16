@@ -1,117 +1,41 @@
 package Task09.Task09_B;
 
-import javax.xml.crypto.dsig.spec.XSLTTransformParameterSpec;
-import java.io.DataInputStream;
-import java.io.InputStream;
-import java.util.Arrays;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.RandomStringGenerator;
+
+import java.util.*;
 
 public class Main {
-  private static Parser in = new Parser(System.in);
+  private static Scanner in = new Scanner(System.in);
 
   public static void main(String[] args) {
-    String str1 = "abanabanaband";
-    String str2 = "aaa";
-    System.out.println(StringHandler.getPeriod(str1));
-  }
-}
-
-class Parser {
-  private final int BUFFER_SIZE = 1 << 16;
-  private DataInputStream din;
-  private byte[] buffer;
-  private int bufferPointer, bytesRead;
-
-  public Parser(InputStream in) {
-    din = new DataInputStream(in);
-    buffer = new byte[BUFFER_SIZE];
-    bufferPointer = bytesRead = 0;
+    StringBuilder pattern = new StringBuilder(in.nextLine());
+    StringBuilder text = new StringBuilder(in.nextLine());
+    System.out.println(doTask(pattern, text));
   }
 
-  public String nextString(int maxSize) {
-    byte[] ch = new byte[maxSize];
-    int point = 0;
-    try {
-      byte c = read();
-      while (c == ' ' || c == '\n' || c == '\r') {
-        c = read();
-      }
-      while (c != ' ' && c != '\n' && c != '\r') {
-        ch[point++] = c;
-        c = read();
-      }
-    } catch (Exception e) {
+  private static long doTask(StringBuilder pattern, StringBuilder text) {
+    var result1 = StringHandler.zFunction(text, pattern);
+    var result2 = StringHandler.zFunction(text.reverse(), pattern.reverse());
+    for (int i = 0; i < result2.length / 2; i++) {
+      int temp = result2[i];
+      result2[i] = result2[result2.length - 1 - i];
+      result2[result2.length - 1 - i] = temp;
     }
-    return new String(ch, 0, point);
-  }
-
-  public int nextInt() {
-    int ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
+    long answer = result1[0] == pattern.length() ? 1 : 0;
+    for (int i = 1; i < result1.length; ++i) {
+      if (result1[i] == pattern.length()) {
+        ++answer;
       }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
+      int over = Math.min(result1[i], pattern.length() - 1) + Math.min(result2[i - 1], pattern.length() - 1);
+      answer += Math.max(0, over + 1 - pattern.length());
     }
-    return ret;
-  }
-
-  public long nextLong() {
-    long ret = 0;
-    boolean neg;
-    try {
-      byte c = read();
-      while (c <= ' ') {
-        c = read();
-      }
-      neg = c == '-';
-      if (neg) {
-        c = read();
-      }
-      do {
-        ret = ret * 10 + c - '0';
-        c = read();
-      } while (c > ' ');
-
-      if (neg) {
-        return -ret;
-      }
-    } catch (Exception e) {
-    }
-    return ret;
-  }
-
-  private void fillBuffer() {
-    try {
-      bytesRead = din.read(buffer, bufferPointer = 0, BUFFER_SIZE);
-    } catch (Exception e) {
-    }
-    if (bytesRead == -1) buffer[0] = -1;
-  }
-
-  private byte read() {
-    if (bufferPointer == bytesRead) {
-      fillBuffer();
-    }
-    return buffer[bufferPointer++];
+    return answer / (pattern.length() / StringHandler.getPeriod(pattern));
   }
 }
 
 class StringHandler {
-  public static int[] prefixFunction(StringBuilder suffixString, String prefixString, boolean endPriotity) {
+  public static int[] prefixFunction(String suffixString, String prefixString, boolean endPriotity) {
     int[] start = new int[prefixString.length()];
 
     for (int i = 1; i < start.length; ++i) {
@@ -137,7 +61,7 @@ class StringHandler {
     return end;
   }
 
-  public static int[] zFunction(String functionString, String prefixString) {
+  public static int[] zFunction(StringBuilder functionString, StringBuilder prefixString) {
     int[] start = new int[prefixString.length()];
 
     int left = 0;
@@ -168,7 +92,7 @@ class StringHandler {
     return end;
   }
 
-  public static int getPeriod(String str) {
+  public static int getPeriod(StringBuilder str) {
     int[] z = new int[str.length()];
 
     int left = 0;
@@ -180,7 +104,7 @@ class StringHandler {
       if (z[i] + i > right) {
         left = i;
         right = z[i] + i;
-        if (right == z.length) {
+        if (right == z.length && str.length() % i == 0) {
           return i;
         }
       }
