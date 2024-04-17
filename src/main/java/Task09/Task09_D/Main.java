@@ -186,7 +186,7 @@ class HashTable {
     long hPx = prefTable1[x1][y2] * baseX1[x2 - x1] % module1;
     long hPy = prefTable1[x2][y1] * baseY1[y2 - y1] % module1;
     long hMin = (prefTable1[x1][y1] * baseX1[x2 - x1] % module1) * baseY1[y2 - y1] % module1;
-    return (hFull + hMin - hPx - hPy + module1) % module1;
+    return (hFull + hMin - hPx - hPy + 2 * module1) % module1;
   }
 
   // works by indexes in initial table
@@ -198,7 +198,7 @@ class HashTable {
     long hPx = prefTable2[x1][y2] * baseX2[x2 - x1] % module2;
     long hPy = prefTable2[x2][y1] * baseY2[y2 - y1] % module2;
     long hMin = (prefTable2[x1][y1] * baseX2[x2 - x1] % module2) * baseY2[y2 - y1] % module2;
-    return (hFull + hMin - hPx - hPy + module2) % module2;
+    return (hFull + hMin - hPx - hPy + 2 * module2) % module2;
   }
 
   public static void calcBase(int upToX, int upToY) {
