@@ -2,6 +2,9 @@ package Task09.Task09_F;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class Main {
   private static Parser in = new Parser(System.in);
