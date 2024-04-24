@@ -2,15 +2,77 @@ package Task09.Task09_F;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class Main {
   private static Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
+    int peopleNum = in.nextInt();
+    int minGroupSize = in.nextInt();
+    TrieDoubled trie = new TrieDoubled();
+    for (int i = 0; i < peopleNum; ++i) {
+      trie.insert(in.nextString(1000001));
+    }
 
+    var result = trie.getOverlapGroupsCount(minGroupSize);
+    int requestNum = in.nextInt();
+    for (int i = 0; i < requestNum; ++i) {
+      int overlap = in.nextInt();
+      System.out.println(overlap >= result.length ? 0 : result[overlap]);
+    }
+  }
+}
+
+class TrieDoubled {
+  public final int alphabetSize = '9' - '0' + 1;
+  public final int alphabetStart = '0';
+
+  public class TrieNode {
+    public boolean isTerminal = false;
+    public int subTreeSize = 0;
+    public final Map<Integer, TrieNode> next = new TreeMap<>();
+    public int depth = 0;
+  }
+
+  public TrieNode root = new TrieNode();
+  private int maxWordSize = 0;
+
+  public void insert(String word) {
+    maxWordSize = Math.max(maxWordSize, word.length());
+    root.subTreeSize += 1;
+    var contextNode = root;
+
+    for (int i = 0; i < word.length(); ++i) {
+      var charIndex = calculateIndex(word.charAt(i), word.charAt(word.length() - i - 1));
+
+      contextNode.next.putIfAbsent(charIndex, new TrieNode());
+
+      contextNode = contextNode.next.get(charIndex);
+      contextNode.subTreeSize += 1;
+      contextNode.depth = i + 1;
+    }
+
+    contextNode.isTerminal = true;
+  }
+
+  public int[] getOverlapGroupsCount(Integer minGroupSize) {
+    int[] answer = new int[maxWordSize + 1];
+    Queue<TrieNode> queue = new ArrayDeque<>();
+    queue.add(root);
+
+    TrieNode node = null;
+    while ((node = queue.poll()) != null) {
+      if (node.subTreeSize >= minGroupSize) {
+        answer[node.depth] += 1;
+        queue.addAll(node.next.values());
+      }
+    }
+    return answer;
+  }
+
+  private int calculateIndex(char c1, char c2) {
+    return c2 + (c1 - alphabetStart) * alphabetSize;
   }
 }
 
