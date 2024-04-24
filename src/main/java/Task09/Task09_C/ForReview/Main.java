@@ -5,9 +5,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Scanner;
-
-// O(|N|^2 * |L|), N - number of words, L - maximum length of word, so 10^11 in given task
 
 public class Main {
   private static Parser in = new Parser(System.in);
@@ -15,9 +12,27 @@ public class Main {
   public static void main(String[] args) {
     int wordNum = in.nextInt();
     List<String> words = new ArrayList<>();
+    TrieSuffixLeftPalindrom trie = new TrieSuffixLeftPalindrom();
 
+    String word;
     for (int i = 0; i < wordNum; ++i) {
-      words.add(in.nextString(11));
+      word = in.nextString(11);
+      words.add(word);
+      trie.insert(word);
+    }
+
+    List<Integer> values = new ArrayList<>();
+    for (int wNum = 1; wNum <= wordNum; ++wNum) {
+      for (Integer concatNumber : trie.getRightConcatPalindroms(words.get(wNum - 1))) {
+        if (concatNumber == wNum) continue;
+        values.add(wNum);
+        values.add(concatNumber);
+      }
+    }
+
+    System.out.println(values.size() / 2);
+    for (int i = 0; i < values.size() / 2; ++i) {
+      System.out.println(values.get(i * 2) + " " + values.get(i * 2 + 1));
     }
   }
 }
@@ -88,9 +103,20 @@ class TrieSuffixLeftPalindrom implements Graph<TrieSuffixLeftPalindrom.TrieNode,
     contextNode.terminatesWord = wordCounter;
   }
 
-  public List<Integer> getRightPalindroms(String forWord) {
+  public List<Integer> getRightConcatPalindroms(String forWord) {
     List<Integer> answer = new ArrayList<>();
+    TrieNode activeNode = root;
+    for (int i = 0; i < forWord.length() - 1; i++) {
+      activeNode = activeNode.next[forWord.charAt(i) - alphabetStart];
+      if (activeNode == null) return answer;
+      if (activeNode.isTerminal && StringHandler.isSubPalindrom(forWord, i + 1, forWord.length() - 1))
+        answer.add(activeNode.terminatesWord);
+    }
 
+    activeNode = activeNode.next[forWord.charAt(forWord.length() - 1) - alphabetStart];
+    if (activeNode != null) {
+      answer.addAll(activeNode.wordsPalindrom);
+    }
 
     return answer;
   }
