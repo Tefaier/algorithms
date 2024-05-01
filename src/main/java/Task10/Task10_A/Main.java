@@ -2,6 +2,10 @@ package Task10.Task10_A;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class Main {
   private static Parser in = new Parser(System.in);
@@ -103,5 +107,64 @@ class Parser {
       fillBuffer();
     }
     return buffer[bufferPointer++];
+  }
+}
+
+class SuffixAutomate {
+  public final int alphabetSize = 'z' - 'a' + 1;
+  public final int alphabetStart = 'a';
+
+  static class AutomateNode {
+    public int lenght;
+    public int link;
+    public TreeMap<Integer, Integer> next = new TreeMap<>();
+
+    public AutomateNode(int lenght, int link) {
+      this.lenght = lenght;
+      this.link = link;
+    }
+  }
+
+  public List<AutomateNode> nodes = new ArrayList<>();
+  private int fullNodeIndex = 0;
+
+  public SuffixAutomate() {
+    nodes.add(new AutomateNode(0, -1));
+  }
+
+  public void addLetter(char character) {
+    int newFullIndex = nodes.size();
+
+    nodes.add(new AutomateNode(nodes.get(fullNodeIndex).lenght + 1, 0));
+
+    int pointer = fullNodeIndex;
+    while (pointer != -1 && !nodes.get(pointer).next.containsKey((int) character)) {
+      nodes.get(pointer).next.put((int) character, newFullIndex);
+      pointer = nodes.get(pointer).link;
+    }
+
+    if (pointer == -1) {
+      fullNodeIndex = newFullIndex;
+      return;
+    }
+
+    int toSplit = nodes.get(pointer).next.get((int) character);
+    if (nodes.get(pointer).lenght + 1 == nodes.get(toSplit).lenght) {
+      nodes.get(newFullIndex).link = toSplit;
+    } else {
+      int cloneIndex = nodes.size();
+      nodes.add(new AutomateNode(nodes.get(pointer).lenght + 1, nodes.get(toSplit).link));
+      nodes.get(cloneIndex).next.putAll(nodes.get(toSplit).next);
+
+      while (pointer != -1 && nodes.get(pointer).next.getOrDefault((int) character, -1) == toSplit) {
+        nodes.get(pointer).next.put((int) character, cloneIndex);
+        pointer = nodes.get(pointer).link;
+      }
+
+      nodes.get(newFullIndex).link = cloneIndex;
+      nodes.get(toSplit).link = cloneIndex;
+    }
+
+    fullNodeIndex = newFullIndex;
   }
 }
