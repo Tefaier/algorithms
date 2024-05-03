@@ -1,18 +1,18 @@
 package Task10.Task10_D;
 
-import Task09.Task09_F.TrieDoubled;
-
 import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
-
-// по dp насчитывать максимальное и минимальное расстояние до терминала
 
 public class Main {
   private static Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
-
+    String str = in.nextString(10000);
+    SuffixAutomate automate = new SuffixAutomate();
+    automate.addString(str);
+    automate.calc();
+    System.out.println(automate.count());
   }
 }
 
@@ -118,8 +118,8 @@ class SuffixAutomate {
   static class AutomateNode {
     public int length;
     public int link;
-    public int maxToEnd;
-    public int minToEnd;
+    public int maxToEnd = -1;
+    public int minToEnd = 10000000;
     public Integer[] next = new Integer[alphabetSize];
 
     public AutomateNode(int length, int link) {
@@ -200,17 +200,24 @@ class SuffixAutomate {
   public void calc() {
     nodes.get(nodes.size() - 1).maxToEnd = 0;
     nodes.get(nodes.size() - 1).minToEnd = 0;
-    for (int i = nodes.size() - 2; i >= 0; --i) {
-      int min = 1000000000;
-      int max = 0;
-      for (Integer integer : nodes.get(i).next) {
+    for (int i = nodes.size() - 1; i >= 0; --i) {
+      AutomateNode currentNode = nodes.get(i);
+      int min = currentNode.minToEnd;
+      int max = currentNode.maxToEnd;
+      for (Integer integer : currentNode.next) {
         if (integer == null) continue;
-        min = Math.min(min, integer);
-        max = Math.max(max, integer);
+        min = Math.min(min, nodes.get(integer).minToEnd + 1);
+        max = Math.max(max, nodes.get(integer).maxToEnd + 1);
       }
-      nodes.get(i).minToEnd = min;
-      nodes.get(i).maxToEnd = max;
+      currentNode.minToEnd = min;
+      currentNode.maxToEnd = max;
+      if (currentNode.link != -1) {
+        nodes.get(currentNode.link).minToEnd = Math.min(nodes.get(currentNode.link).minToEnd, currentNode.minToEnd);
+        nodes.get(currentNode.link).maxToEnd = Math.max(nodes.get(currentNode.link).maxToEnd, currentNode.maxToEnd);
+      }
     }
+    nodes.get(0).maxToEnd = 0;
+    nodes.get(0).minToEnd = 0;
   }
 
   public long count() {
@@ -220,12 +227,12 @@ class SuffixAutomate {
 
     Pair node = null;
     while ((node = queue.poll()) != null) {
-      if (node.length() < nodes.get(node.index()).diff()) ++counter;
+      if (node.length() <= nodes.get(node.index()).diff()) ++counter;
       for (Integer i : nodes.get(node.index()).next) {
         if (i != null) queue.add(new Pair(i, node.length() + 1));
       }
     }
-    return counter;
+    return --counter;
   }
 }
 
