@@ -1,17 +1,34 @@
 package Task10.Task10_A;
 
-import java.io.DataInputStream;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TreeMap;
-import java.util.TreeSet;
+import java.io.*;
+import java.util.*;
 
 public class Main {
-  private static Parser in = new Parser(System.in);
+  private static BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
 
-  public static void main(String[] args) {
-
+  public static void main(String[] args) throws IOException {
+    SuffixAutomate automate = new SuffixAutomate();
+    List<Boolean> answers = new ArrayList<>();
+    in.lines().forEachOrdered(str -> {
+      switch (str.charAt(0)) {
+        case '?' -> {
+          Integer cursor = 0;
+          for (int i = 2; i < str.length(); i++) {
+            cursor = automate.traverse(cursor, str.charAt(i));
+            if (cursor == null) {
+              break;
+            }
+          }
+          answers.add(cursor != null);
+        }
+        case 'A' -> {
+          for (int i = 2; i < str.length(); i++) {
+            automate.addLetter(StringHandler.normaliseAlphabet(str.charAt(i)));
+          }
+        }
+      }
+    });
+    answers.forEach(val -> System.out.println(val ? "YES" : "NO"));
   }
 }
 
@@ -111,16 +128,16 @@ class Parser {
 }
 
 class SuffixAutomate {
-  public final int alphabetSize = 'z' - 'a' + 1;
-  public final int alphabetStart = 'a';
+  public static int alphabetSize = 'z' - 'a' + 1;
+  public static int alphabetStart = 'a';
 
   static class AutomateNode {
-    public int lenght;
+    public int length;
     public int link;
-    public TreeMap<Integer, Integer> next = new TreeMap<>();
+    public Integer[] next = new Integer[alphabetSize];
 
-    public AutomateNode(int lenght, int link) {
-      this.lenght = lenght;
+    public AutomateNode(int length, int link) {
+      this.length = length;
       this.link = link;
     }
   }
@@ -132,14 +149,20 @@ class SuffixAutomate {
     nodes.add(new AutomateNode(0, -1));
   }
 
-  public void addLetter(char character) {
+  public void addString(String str) {
+    for (int i = 0; i < str.length(); i++) {
+      addLetter(StringHandler.normaliseAlphabet(str.charAt(i)));
+    }
+  }
+
+  public void addLetter(int character) {
     int newFullIndex = nodes.size();
 
-    nodes.add(new AutomateNode(nodes.get(fullNodeIndex).lenght + 1, 0));
+    nodes.add(new AutomateNode(nodes.get(fullNodeIndex).length + 1, 0));
 
     int pointer = fullNodeIndex;
-    while (pointer != -1 && !nodes.get(pointer).next.containsKey((int) character)) {
-      nodes.get(pointer).next.put((int) character, newFullIndex);
+    while (pointer != -1 && nodes.get(pointer).next[character] == null) {
+      nodes.get(pointer).next[character] = newFullIndex;
       pointer = nodes.get(pointer).link;
     }
 
@@ -148,16 +171,16 @@ class SuffixAutomate {
       return;
     }
 
-    int toSplit = nodes.get(pointer).next.get((int) character);
-    if (nodes.get(pointer).lenght + 1 == nodes.get(toSplit).lenght) {
+    int toSplit = nodes.get(pointer).next[character];
+    if (nodes.get(pointer).length + 1 == nodes.get(toSplit).length) {
       nodes.get(newFullIndex).link = toSplit;
     } else {
       int cloneIndex = nodes.size();
-      nodes.add(new AutomateNode(nodes.get(pointer).lenght + 1, nodes.get(toSplit).link));
-      nodes.get(cloneIndex).next.putAll(nodes.get(toSplit).next);
+      nodes.add(new AutomateNode(nodes.get(pointer).length + 1, nodes.get(toSplit).link));
+      nodes.get(cloneIndex).next = Arrays.copyOf(nodes.get(toSplit).next, nodes.get(toSplit).next.length);
 
-      while (pointer != -1 && nodes.get(pointer).next.getOrDefault((int) character, -1) == toSplit) {
-        nodes.get(pointer).next.put((int) character, cloneIndex);
+      while (pointer != -1 && nodes.get(pointer).next[character] == toSplit) {
+        nodes.get(pointer).next[character] = cloneIndex;
         pointer = nodes.get(pointer).link;
       }
 
@@ -166,5 +189,30 @@ class SuffixAutomate {
     }
 
     fullNodeIndex = newFullIndex;
+  }
+
+  public boolean checkContains(String str) {
+    boolean answer = true;
+    Integer cursor = 0;
+    for (int i = 0; i < str.length(); i++) {
+      if ((cursor = nodes.get(cursor).next[StringHandler.normaliseAlphabet(str.charAt(i))]) == null) {
+        answer = false;
+        break;
+      }
+    }
+    return answer;
+  }
+
+  public Integer traverse(int from, int character) {
+    return nodes.get(from).next[StringHandler.normaliseAlphabet(character)];
+  }
+}
+
+class StringHandler {
+  private static int alpStart = 'a';
+  private static int capStart = 'A';
+
+  public static int normaliseAlphabet(int character) {
+    return character < alpStart ? character - capStart : character - alpStart;
   }
 }
