@@ -28,7 +28,11 @@ public class Main {
         }
       }
     });
-    answers.forEach(val -> System.out.println(val ? "YES" : "NO"));
+    StringBuilder stringBuilder = new StringBuilder();
+    answers.forEach(val -> {
+      stringBuilder.append(val ? "YES\n" : "NO\n");
+    });
+    System.out.println(stringBuilder);
   }
 }
 
