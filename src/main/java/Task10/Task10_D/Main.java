@@ -1,7 +1,12 @@
 package Task10.Task10_D;
 
+import Task09.Task09_F.TrieDoubled;
+
 import java.io.DataInputStream;
 import java.io.InputStream;
+import java.util.*;
+
+// по dp насчитывать максимальное и минимальное расстояние до терминала
 
 public class Main {
   private static Parser in = new Parser(System.in);
@@ -104,4 +109,134 @@ class Parser {
     }
     return buffer[bufferPointer++];
   }
+}
+
+class SuffixAutomate {
+  public static int alphabetSize = 'z' - 'a' + 1;
+  public static int alphabetStart = 'a';
+
+  static class AutomateNode {
+    public int length;
+    public int link;
+    public int maxToEnd;
+    public int minToEnd;
+    public Integer[] next = new Integer[alphabetSize];
+
+    public AutomateNode(int length, int link) {
+      this.length = length;
+      this.link = link;
+    }
+
+    public int diff() {
+      return maxToEnd - minToEnd;
+    }
+  }
+
+  public List<AutomateNode> nodes = new ArrayList<>();
+  private int fullNodeIndex = 0;
+
+  public SuffixAutomate() {
+    nodes.add(new AutomateNode(0, -1));
+  }
+
+  public void addString(String str) {
+    for (int i = 0; i < str.length(); i++) {
+      addLetter(StringHandler.normaliseAlphabet(str.charAt(i)));
+    }
+  }
+
+  public void addLetter(int character) {
+    int newFullIndex = nodes.size();
+
+    nodes.add(new AutomateNode(nodes.get(fullNodeIndex).length + 1, 0));
+
+    int pointer = fullNodeIndex;
+    while (pointer != -1 && nodes.get(pointer).next[character] == null) {
+      nodes.get(pointer).next[character] = newFullIndex;
+      pointer = nodes.get(pointer).link;
+    }
+
+    if (pointer == -1) {
+      fullNodeIndex = newFullIndex;
+      return;
+    }
+
+    int toSplit = nodes.get(pointer).next[character];
+    if (nodes.get(pointer).length + 1 == nodes.get(toSplit).length) {
+      nodes.get(newFullIndex).link = toSplit;
+    } else {
+      int cloneIndex = nodes.size();
+      nodes.add(new AutomateNode(nodes.get(pointer).length + 1, nodes.get(toSplit).link));
+      nodes.get(cloneIndex).next = Arrays.copyOf(nodes.get(toSplit).next, nodes.get(toSplit).next.length);
+
+      while (pointer != -1 && nodes.get(pointer).next[character] == toSplit) {
+        nodes.get(pointer).next[character] = cloneIndex;
+        pointer = nodes.get(pointer).link;
+      }
+
+      nodes.get(newFullIndex).link = cloneIndex;
+      nodes.get(toSplit).link = cloneIndex;
+    }
+
+    fullNodeIndex = newFullIndex;
+  }
+
+  public boolean checkContains(String str) {
+    boolean answer = true;
+    Integer cursor = 0;
+    for (int i = 0; i < str.length(); i++) {
+      if ((cursor = nodes.get(cursor).next[StringHandler.normaliseAlphabet(str.charAt(i))]) == null) {
+        answer = false;
+        break;
+      }
+    }
+    return answer;
+  }
+
+  public Integer traverse(int from, int character) {
+    return nodes.get(from).next[StringHandler.normaliseAlphabet(character)];
+  }
+
+  public void calc() {
+    nodes.get(nodes.size() - 1).maxToEnd = 0;
+    nodes.get(nodes.size() - 1).minToEnd = 0;
+    for (int i = nodes.size() - 2; i >= 0; --i) {
+      int min = 1000000000;
+      int max = 0;
+      for (Integer integer : nodes.get(i).next) {
+        if (integer == null) continue;
+        min = Math.min(min, integer);
+        max = Math.max(max, integer);
+      }
+      nodes.get(i).minToEnd = min;
+      nodes.get(i).maxToEnd = max;
+    }
+  }
+
+  public long count() {
+    long counter = 0;
+    Queue<Pair> queue = new ArrayDeque<>();
+    queue.add(new Pair(0, 0));
+
+    Pair node = null;
+    while ((node = queue.poll()) != null) {
+      if (node.length() < nodes.get(node.index()).diff()) ++counter;
+      for (Integer i : nodes.get(node.index()).next) {
+        if (i != null) queue.add(new Pair(i, node.length() + 1));
+      }
+    }
+    return counter;
+  }
+}
+
+class StringHandler {
+  private static int alpStart = 'a';
+  private static int capStart = 'A';
+
+  public static int normaliseAlphabet(int character) {
+    return character < alpStart ? character - capStart : character - alpStart;
+  }
+}
+
+record Pair(Integer index, Integer length) {
 }
