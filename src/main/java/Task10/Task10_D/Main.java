@@ -8,11 +8,47 @@ public class Main {
   private static Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
-    String str = in.nextString(10010);
+    System.out.println(suff(in.nextString(10010)));
+  }
+
+  private static long suff(String string) {
     SuffixAutomate automate = new SuffixAutomate();
-    automate.addString(str);
+    automate.addString(string);
     automate.calc();
-    System.out.println(automate.count());
+    return automate.count();
+  }
+
+  private static long full(String string) {
+    long answer = 0;
+    Set<String> substrings = new HashSet<>();
+    for (int l = 0; l < string.length(); l++) {
+      for (int r = l + 1; r <= string.length(); r++) {
+        substrings.add(string.substring(l, r));
+      }
+    }
+
+    for (String str : substrings) {
+      var values = StringHandler.prefixFunction(string, str, false);
+      int min = 0;
+      int max = 0;
+      for (int i = 0; i < values.length; i++) {
+        if (values[i] == str.length()) {
+          min = i;
+          break;
+        }
+      }
+      for (int i = values.length - 1; i >= 0; --i) {
+        if (values[i] == str.length()) {
+          max = i;
+          break;
+        }
+      }
+      if (str.length() <= max - min) {
+        ++answer;
+      }
+    }
+
+    return answer;
   }
 }
 
@@ -193,8 +229,7 @@ class SuffixAutomate {
   public void calc() {
     nodes.get(fullNodeIndex).maxToEnd = 0;
     nodes.get(fullNodeIndex).minToEnd = 0;
-    for (int i = nodes.size() - 1; i >= 0; --i) {
-      AutomateNode currentNode = nodes.get(i);
+    nodes.stream().sorted((node1, node2) -> node2.length - node1.length).forEachOrdered(currentNode -> {
       for (AutomateNode node : currentNode.next.values()) {
         currentNode.tryNewMin(node.minToEnd + 1);
         currentNode.tryNewMax(node.maxToEnd + 1);
@@ -203,7 +238,7 @@ class SuffixAutomate {
         currentNode.link.tryNewMin(currentNode.minToEnd);
         currentNode.link.tryNewMax(currentNode.maxToEnd);
       }
-    }
+    });
     nodes.get(0).maxToEnd = 0;
     nodes.get(0).minToEnd = 0;
   }
@@ -225,4 +260,32 @@ class SuffixAutomate {
 }
 
 record Pair(SuffixAutomate.AutomateNode node, Integer length) {
+}
+
+class StringHandler {
+  public static int[] prefixFunction(String suffixString, String prefixString, boolean endPriotity) {
+    int[] start = new int[prefixString.length()];
+
+    for (int i = 1; i < start.length; ++i) {
+      int current = start[i - 1];
+      while (prefixString.charAt(i) != prefixString.charAt(current) && current > 0)
+        current = start[current - 1];
+      if (prefixString.charAt(i) == prefixString.charAt(current))
+        start[i] = current + 1;
+    }
+    if (suffixString == null) return start;
+
+    int[] end = new int[endPriotity ? Math.min(suffixString.length(), prefixString.length()) : suffixString.length()];
+    int from = suffixString.length() - end.length;
+    end[0] = suffixString.charAt(from) == prefixString.charAt(0) ? 1 : 0;
+    for (int i = from + 1; i < suffixString.length(); ++i) {
+      int current = end[i - from - 1];
+      while ((current == prefixString.length() || suffixString.charAt(i) != prefixString.charAt(current)) && current > 0)
+        current = start[current - 1];
+      if (suffixString.charAt(i) == prefixString.charAt(current))
+        end[i - from] = current + 1;
+    }
+
+    return end;
+  }
 }
