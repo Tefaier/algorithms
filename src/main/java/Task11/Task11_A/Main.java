@@ -19,7 +19,7 @@ public class Main {
     }
     values.sort(Integer::compareTo);
 
-    List<List<Integer>> history = new ArrayList<>(maximumChanges);
+    List<List<Integer>> history = new ArrayList<>();
     StringBuilder result = new StringBuilder();
 
     for (int i = 0; i < commandsNum; i++) {
@@ -31,7 +31,6 @@ public class Main {
 
       var command = new Integer[]{in.nextInt(), in.nextInt(), in.nextInt()};
       if (command[0] == 1) {
-        // 0 1 2 3
         int from = command[1];
         int to = command[2];
         int fromPos = binarySearch(from, values);
@@ -48,7 +47,7 @@ public class Main {
           }
           values.set(toPos, to);
         } else {
-          for (int j = toPos + 1; j <= fromPos; j++) {
+          for (int j = fromPos; j > toPos; j--) {
             values.set(j, values.get(j - 1));
           }
           values.set(toPos, to);
@@ -56,10 +55,14 @@ public class Main {
       } else {
         int toPast = command[1];
         int pointer = command[2];
-        result.append(history.get(history.size() - 1 - toPast).get(pointer - 1)).append('\n');
+        if (history.size() - 1 - toPast < 0) {
+          result.append(history.get(0).get(pointer - 1)).append('\n');
+        } else {
+          result.append(history.get(history.size() - 1 - toPast).get(pointer - 1)).append('\n');
+        }
       }
     }
-    System.out.println(result);
+    System.out.print(result);
   }
 
   private static int binarySearch(int key, List<Integer> arr) {
@@ -83,10 +86,9 @@ public class Main {
       return -1 - right;
     }
   }
-
 }
 
-//https://habr.com/ru/articles/91283/
+// https://habr.com/ru/articles/91283/
 class Parser {
   private final int BUFFER_SIZE = 1 << 16;
   private DataInputStream din;
@@ -181,3 +183,5 @@ class Parser {
     return buffer[bufferPointer++];
   }
 }
+
+
