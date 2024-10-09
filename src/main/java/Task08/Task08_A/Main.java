@@ -17,7 +17,7 @@ public class Main {
     }
     Net<Integer> net = new Net<>(IntStream.range(1, serverNum + 1).boxed().toList(), edges, true);
 
-    System.out.println(GraphHandler.FordFarkenson(net, 1, serverNum));
+    System.out.println(GraphHandler.FordFulkerson(net, 1, serverNum));
   }
 }
 
@@ -309,7 +309,7 @@ class PathSearchVisitor<V, E extends Edge<V>> implements GraphVisitor<V, E> {
 }
 
 class GraphHandler {
-  public static <V> int FordFarkenson(Net<V> net, V from, V to) {
+  public static <V> int FordFulkerson(Net<V> net, V from, V to) {
     int maxFlow = 0;
     FilteredGraph<V, Net<V>.NetEdge> leftNet = new FilteredGraph<>(net, (edge) -> edge.getAwailableFlow() > 0);
     PathSearchVisitor<V, Net<V>.NetEdge> visitor = new PathSearchVisitor<>(from, to);

@@ -2,6 +2,7 @@ import java.io.DataInputStream;
 import java.io.InputStream;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 class DecTree {
   private static Random random = new Random();
@@ -92,6 +93,7 @@ class DecTree {
   }
 }
 
+//https://habr.com/ru/articles/91283/
 class Parser {
 
   private final int BUFFER_SIZE = 1 << 16;
@@ -485,6 +487,165 @@ class TreeImplicit {
   }
 
 
+}
+
+class FFTThing {
+  private static Scanner in = new Scanner(System.in);
+
+  public static void main(String[] args) {
+    int sizeOfPolinom1 = in.nextInt();
+    long[] polinom1 = new long[sizeOfPolinom1 + 1];
+    for (int i = 0; i <= sizeOfPolinom1; i++) {
+      polinom1[i] = in.nextInt();
+    }
+
+    int sizeOfPolinom2 = in.nextInt();
+    long[] polinom2 = new long[sizeOfPolinom2 + 1];
+    for (int i = 0; i <= sizeOfPolinom2; i++) {
+      polinom2[i] = in.nextInt();
+    }
+
+    Polinom parsedPolinom1 = new Polinom(polinom1);
+    Polinom parsedPolinom2 = new Polinom(polinom2);
+
+    Polinom multiplyPolinom = multiplyPolinomsInCoolWay(
+        parsedPolinom1,
+        parsedPolinom2
+    );
+
+    System.out.println("(" + parsedPolinom1 + ") * (" + parsedPolinom2 + ")" + " = " + multiplyPolinom);
+  }
+
+  public static Polinom multiplyPolinomsInCoolWay(Polinom polinom1, Polinom polinom2) {
+    int size = 1;
+    while (size < Math.max(
+        polinom1.values.length,
+        polinom2.values.length)
+    ) size <<= 1;
+    size <<= 1;
+
+    Complex[] complexValues1 = new Complex[size];
+    Complex[] complexValues2 = new Complex[size];
+    for (int i = 0; i < size; i++) {
+      complexValues1[i] = new Complex(i < polinom1.values.length ? polinom1.values[i] : 0, 0);
+      complexValues2[i] = new Complex(i < polinom2.values.length ? polinom2.values[i] : 0, 0);
+    }
+
+    fft(complexValues1, false);
+    fft(complexValues2, false);
+
+    // simple values combination
+    Complex[] combinesValues = new Complex[size];
+    for (int i = 0; i < size; i++) {
+      combinesValues[i] = complexValues1[i];
+      combinesValues[i].multiply(complexValues2[i]);
+    }
+
+    fft(combinesValues, true);
+
+    long[] multipliers = new long[
+        polinom1.values.length
+            + polinom2.values.length
+            - 1];
+    for (int i = 0; i < multipliers.length; i++) {
+      multipliers[i] = Math.round(combinesValues[i].real);
+    }
+
+    return new Polinom(multipliers);
+  }
+
+  public static void fft(Complex[] values, boolean reversed) {
+    int size = values.length;
+    int sizeHalved = size / 2;
+    if (size == 1) return;
+
+    Complex[] even = new Complex[sizeHalved];
+    for (int k = 0; k < sizeHalved; k++) {
+      even[k] = values[2 * k];
+    }
+
+    Complex[] odd = new Complex[sizeHalved];
+    for (int k = 0; k < sizeHalved; k++) {
+      odd[k] = values[2 * k + 1];
+    }
+
+    fft(even, reversed);
+    fft(odd, reversed);
+
+    Complex w = new Complex(1, 0);
+    double angleToAdd = 2 * Math.PI / size * (reversed ? -1 : 1);
+    Complex wAdd = new Complex(Math.cos(angleToAdd), Math.sin(angleToAdd));
+    for (int i = 0; i < sizeHalved; i++) {
+      values[i] = new Complex(w.real, w.imaginary);
+      values[i].multiply(odd[i]);
+      values[i].add(even[i]);
+      w.multiply(wAdd);
+    }
+
+    w = new Complex(1, 0);
+    for (int i = sizeHalved; i < size; i++) {
+      Complex val = new Complex(w.real, w.imaginary);
+      val.multiply(odd[i - sizeHalved]);
+      values[i] = new Complex(even[i - sizeHalved].real, even[i - sizeHalved].imaginary);
+      values[i].substract(val);
+      w.multiply(wAdd);
+    }
+
+    if (reversed) {
+      for (int i = 0; i < size; i++) {
+        values[i].simpleDivide(2);
+      }
+    }
+  }
+}
+
+class Complex {
+  public double real;
+  public double imaginary;
+
+  public Complex(double real, double imaginary) {
+    this.real = real;
+    this.imaginary = imaginary;
+  }
+
+  public void multiply(Complex z) {
+    double newReal = real * z.real - imaginary * z.imaginary;
+    double newImaginary = real * z.imaginary + imaginary * z.real;
+    real = newReal;
+    imaginary = newImaginary;
+  }
+
+  public void simpleDivide(double x) {
+    real /= x;
+    imaginary /= x;
+  }
+
+  public void add(Complex z) {
+    real += z.real;
+    imaginary += z.imaginary;
+  }
+
+  public void substract(Complex z) {
+    real -= z.real;
+    imaginary -= z.imaginary;
+  }
+}
+
+class Polinom {
+  public long[] values;
+
+  public Polinom(long[] values) {
+    this.values = values;
+  }
+
+  @Override
+  public String toString() {
+    String[] parts = new String[values.length];
+    for (int i = 0; i < values.length; i++) {
+      parts[i] = values[i] + "*x^" + (values.length - i - 1);
+    }
+    return Arrays.stream(parts).collect(Collectors.joining(" + "));
+  }
 }
 
 public class Algorithms {

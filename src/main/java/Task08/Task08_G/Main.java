@@ -101,14 +101,6 @@ class UnorderedGraph<V, E extends Edge<V>> extends Graph<V, E> {
 }
 
 class GraphHandler {
-  private record twoParts<V>(List<V> L, List<V> R) {
-  }
-
-  public static <V, E extends Edge<V>> List<E> kuhn(Graph<V, E> graph) {
-    var parts = constructBiparts(graph);
-    return kuhn(graph, parts.L(), parts.R());
-  }
-
   public static <V, E extends Edge<V>> List<E> kuhn(Graph<V, E> graph, List<V> L, List<V> R) {
     if (L.size() > R.size()) return kuhn(graph, R, L);
 
@@ -132,56 +124,5 @@ class GraphHandler {
       }
     }
     return false;
-  }
-
-  private static <V> twoParts<V> constructBiparts(Graph<V, ?> graph) {
-    List<V> L = new ArrayList<>();
-    List<V> R = new ArrayList<>();
-
-    Set<V> visitedVertices = new HashSet<>();
-    Queue<V> queue = new ArrayDeque<>();
-    HashMap<V, Integer> heights = new HashMap<>();
-
-    while (visitedVertices.size() != graph.vertices.size()) {
-      for (int i = 0; i < graph.vertices.size(); i++) {
-        if (!visitedVertices.contains(graph.vertices.get(i))) {
-          queue.add(graph.vertices.get(i));
-          visitedVertices.add(graph.vertices.get(i));
-          heights.put(graph.vertices.get(i), 0);
-          break;
-        }
-      }
-
-      V vertex;
-      int evenHeightCounter = 1;
-      int oddHeightCounter = 0;
-      while ((vertex = queue.poll()) != null) {
-        for (var edge : graph.getConnected(vertex)) {
-          if (!visitedVertices.contains(edge.getTo())) {
-            int toHeight = heights.get(edge.getFrom()) + 1;
-            queue.add(edge.getTo());
-            visitedVertices.add(edge.getTo());
-            heights.put(edge.getTo(), toHeight);
-            if (toHeight % 2 == 0) {
-              evenHeightCounter++;
-            } else {
-              oddHeightCounter++;
-            }
-          }
-        }
-      }
-
-      boolean evenToL = evenHeightCounter < oddHeightCounter;
-      heights.forEach((key, value) -> {
-        if (evenToL ^ value % 2 != 0) {
-          L.add(key);
-        } else {
-          R.add(key);
-        }
-      });
-      heights.clear();
-    }
-
-    return new twoParts<>(L, R);
   }
 }

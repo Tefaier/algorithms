@@ -12,22 +12,29 @@ public class Main {
     int vertexNum = in.nextInt();
     int edgeNum = in.nextInt();
 
-    PriorityQueue<WeightedEdge<Integer>> sortedEdges = new PriorityQueue<>();
+    List<WeightedEdge<Integer>> edges = new ArrayList<>();
     for (int i = 0; i < edgeNum; i++) {
-      sortedEdges.add(new WeightedEdge<>(in.nextInt() - 1, in.nextInt() - 1, in.nextInt()));
+      edges.add(new WeightedEdge<>(in.nextInt() - 1, in.nextInt() - 1, in.nextInt()));
     }
 
+    System.out.println(countMinSpanSize(edges, vertexNum));
+  }
+
+  private static long countMinSpanSize(List<WeightedEdge<Integer>> edges, int vertexNum) {
+    var sortedEdges = edges.stream().sorted().toList();
     DSU<Integer> dsu = new DSU<>(IntStream.range(0, vertexNum).boxed().toList());
     int weightCounter = 0;
+    int edgeIndex = 0;
 
     while (dsu.compNumber() > 1) {
-      WeightedEdge<Integer> currentEdge = sortedEdges.poll();
+      WeightedEdge<Integer> currentEdge = sortedEdges.get(edgeIndex);
       if (!dsu.union(currentEdge.getFrom(), currentEdge.getTo())) {
         weightCounter += currentEdge.getWeight();
       }
+      edgeIndex++;
     }
 
-    System.out.println(weightCounter);
+    return weightCounter;
   }
 }
 
@@ -201,7 +208,7 @@ interface Edge<V> {
   V getTo();
 }
 
-class WeightedEdge<V> implements Comparable<WeightedEdge>, Edge<V> {
+class WeightedEdge<V> implements Comparable<WeightedEdge<V>>, Edge<V> {
   public V from;
   public V to;
   public int weight;

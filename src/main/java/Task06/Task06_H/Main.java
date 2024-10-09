@@ -9,12 +9,12 @@ public class Main {
   private static final byte size = 3;
   private static final byte emptySign = 0;
 
-  private static <V extends Vertex, A extends AStarVisitor<V>, H extends Heuristic<V>, G extends Graph<V>> void AStar(V from, V to, A visitor, H heuristic, G graph) {
+  private static <V extends VertexWithHash, A extends AStarVisitor<V>, H extends Heuristic<V>, G extends Graph<V>> void AStar(V from, V to, A visitor, H heuristic, G graph) {
     PriorityQueue<V> queue = new PriorityQueue<>();
-    Set<String> visited = new HashSet<>();
+    Set<Long> visited = new HashSet<>();
     from.value = from.depth + heuristic.calculate(from, to);
     queue.add(from);
-    visited.add(from.toString());
+    visited.add(from.getHash());
 
     V current;
     while ((current = queue.poll()) != null) {
@@ -24,9 +24,9 @@ public class Main {
       }
 
       for (V vert : graph.getConnected(current)) {
-        if (!visited.contains(vert.toString())) {
+        if (!visited.contains(vert.getHash())) {
           vert.value = vert.depth + heuristic.calculate(vert, to);
-          visited.add(vert.toString());
+          visited.add(vert.getHash());
           queue.add(vert);
         }
       }
@@ -174,7 +174,14 @@ class Vertex {
   public int value;
 }
 
-class GameState extends Vertex implements Comparable<GameState> {
+abstract class VertexWithHash extends Vertex {
+  public int depth;
+  public int value;
+
+  public abstract long getHash();
+}
+
+class GameState extends VertexWithHash implements Comparable<GameState> {
   public enum Move {
     U,
     D,
@@ -185,7 +192,7 @@ class GameState extends Vertex implements Comparable<GameState> {
   public byte[][] field;
   public byte emptyX;
   public byte emptyY;
-  public String stringRepr; // precalculated toString
+  public long hashRepr; // precalculated toString
   public GameState parent;
   public Move moveFromParent;
 
@@ -196,7 +203,7 @@ class GameState extends Vertex implements Comparable<GameState> {
     this.emptyX = emptyX;
     this.emptyY = emptyY;
     this.depth = depth;
-    this.stringRepr = this.toString();
+    this.hashRepr = calculateHash();
   }
 
   @Override
@@ -205,24 +212,29 @@ class GameState extends Vertex implements Comparable<GameState> {
     return diff != 0 ? diff : depth - o.depth;
   }
 
-  @Override
-  public String toString() {
-    if (stringRepr != null) return stringRepr;
-    StringBuilder builder = new StringBuilder();
-    for (var arr : field) {
-      for (byte state : arr) {
-        builder.append(state).append(',');
+  public long calculateHash() {
+    int size = field.length;
+    long result = 0;
+    for (var x = 0; x < size; x++) {
+      for (var y = 0; y < size; y++) {
+        result += ((field[x][y]) * ((x * size + y) * size * size));
       }
     }
-    return builder.toString();
+
+    return result;
   }
 
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof GameState) {
-      return stringRepr.equals(((GameState) obj).stringRepr);
+      return hashRepr == (((GameState) obj).hashRepr);
     }
     return false;
+  }
+
+  @Override
+  public long getHash() {
+    return hashRepr;
   }
 }
 

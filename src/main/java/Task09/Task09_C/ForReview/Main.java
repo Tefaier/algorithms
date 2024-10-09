@@ -7,7 +7,8 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Main {
-  private static Parser in = new Parser(System.in);
+  private static final int MAX_WORD_SIZE = 11;
+  private static final Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
     int wordNum = in.nextInt();
@@ -16,7 +17,7 @@ public class Main {
 
     String word;
     for (int i = 0; i < wordNum; ++i) {
-      word = in.nextString(11);
+      word = in.nextString(MAX_WORD_SIZE);
       words.add(word);
       trie.insert(word);
     }
@@ -38,8 +39,8 @@ public class Main {
 }
 
 class TrieSuffixLeftPalindrom implements Graph<TrieSuffixLeftPalindrom.TrieNode, TrieSuffixLeftPalindrom.LetterEdge> {
-  public final int alphabetSize = 'z' - 'a' + 1;
-  public final int alphabetStart = 'a';
+  public final int ALPHABET_SIZE = 'z' - 'a' + 1;
+  public final int ALPHABET_START = 'a';
 
   public class LetterEdge implements Edge<TrieNode> {
     public TrieNode from;
@@ -75,7 +76,7 @@ class TrieSuffixLeftPalindrom implements Graph<TrieSuffixLeftPalindrom.TrieNode,
   public class TrieNode {
     public boolean isTerminal = false;
     public Integer terminatesWord = null;
-    public final TrieNode[] next = new TrieNode[alphabetSize];
+    public final TrieNode[] next = new TrieNode[ALPHABET_SIZE];
     public List<Integer> wordsPalindrom = new ArrayList<>();
   }
 
@@ -88,7 +89,7 @@ class TrieSuffixLeftPalindrom implements Graph<TrieSuffixLeftPalindrom.TrieNode,
     var contextNode = root;
 
     for (int i = word.length() - 1; i >= 0; --i) {
-      var charIndex = word.charAt(i) - alphabetStart;
+      var charIndex = word.charAt(i) - ALPHABET_START;
 
       if (contextNode.next[charIndex] == null) {
         contextNode.next[charIndex] = new TrieNode();
@@ -107,13 +108,13 @@ class TrieSuffixLeftPalindrom implements Graph<TrieSuffixLeftPalindrom.TrieNode,
     List<Integer> answer = new ArrayList<>();
     TrieNode activeNode = root;
     for (int i = 0; i < forWord.length() - 1; i++) {
-      activeNode = activeNode.next[forWord.charAt(i) - alphabetStart];
+      activeNode = activeNode.next[forWord.charAt(i) - ALPHABET_START];
       if (activeNode == null) return answer;
       if (activeNode.isTerminal && StringHandler.isSubPalindrom(forWord, i + 1, forWord.length() - 1))
         answer.add(activeNode.terminatesWord);
     }
 
-    activeNode = activeNode.next[forWord.charAt(forWord.length() - 1) - alphabetStart];
+    activeNode = activeNode.next[forWord.charAt(forWord.length() - 1) - ALPHABET_START];
     if (activeNode != null) {
       answer.addAll(activeNode.wordsPalindrom);
     }
@@ -137,7 +138,7 @@ class TrieSuffixLeftPalindrom implements Graph<TrieSuffixLeftPalindrom.TrieNode,
 
   @Override
   public int getEdgeCount() {
-    throw new UnsupportedOperationException("Trie doesn't provide count of edges");
+    return vertexCounter - 1;
   }
 
   @Override
