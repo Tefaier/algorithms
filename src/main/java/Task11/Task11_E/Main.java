@@ -46,12 +46,12 @@ public class Main {
     int length1 = in.nextInt();
     int length2 = in.nextInt();
 
-    int[] arr1 = new int[length1];
+    Integer[] arr1 = new Integer[length1];
     for (int i = 0; i < length1; i++) {
       arr1[i] = in.nextInt();
     }
 
-    int[] arr2 = new int[length2];
+    Integer[] arr2 = new Integer[length2];
     for (int i = 0; i < length2; i++) {
       arr2[i] = in.nextInt();
     }
@@ -66,24 +66,24 @@ public class Main {
     }
   }
 
-  private static int get(int[] arr) {
+  private static <T extends Comparable<T>> T get(T[] arr) {
     return arr[0];
   }
 }
 
 class ArrayMethods {
-  private static class ArrayProxy {
-    public int[] arr1;
-    public int[] arr2;
+  private static class ArrayProxy<T> {
+    public T[] arr1;
+    public T[] arr2;
     public int length;
 
-    public ArrayProxy(int[] arr1, int[] arr2) {
+    public ArrayProxy(T[] arr1, T[] arr2) {
       this.arr1 = arr1;
       this.arr2 = arr2;
       length = arr1.length + arr2.length;
     }
 
-    public int get(int index) {
+    public T get(int index) {
       if (index >= arr1.length) {
         return arr2[index - arr1.length];
       } else {
@@ -91,7 +91,7 @@ class ArrayMethods {
       }
     }
 
-    public void set(int index, int value) {
+    public void set(int index, T value) {
       if (index >= arr1.length) {
         arr2[index - arr1.length] = value;
       } else {
@@ -100,18 +100,18 @@ class ArrayMethods {
     }
 
     public void swap(int index1, int index2) {
-      int val = get(index1);
+      T val = get(index1);
       set(index1, get(index2));
       set(index2, val);
     }
   }
 
-  public static void merge(int[] arrLeft, int[] arrRight) {
-    ArrayProxy proxy = new ArrayProxy(arrLeft, arrRight);
+  public static <T extends Comparable<T>> void merge(T[] arrLeft, T[] arrRight) {
+    ArrayProxy<T> proxy = new ArrayProxy<>(arrLeft, arrRight);
     merge(proxy);
   }
 
-  private static void merge(ArrayProxy arr) {
+  private static <T extends Comparable<T>> void merge(ArrayProxy<T> arr) {
     int middle = (arr.length + 1) / 2;
     forcePartSort(arr, middle, arr.length - 1, arr.length - middle, -1);
     headSortAdd(arr, (middle / 2) - 1, middle);
@@ -119,10 +119,11 @@ class ArrayMethods {
   }
 
   // limit is excluded
-  private static void swipeElement(ArrayProxy arr, int index, boolean toRight, int limit) {
+  private static <T extends Comparable<T>> void swipeElement(
+      ArrayProxy<T> arr, int index, boolean toRight, int limit) {
     int newIndex;
     while ((newIndex = toRight ? index + 1 : index - 1) != limit) {
-      if ((arr.get(index) - arr.get(newIndex)) * (toRight ? 1 : -1) > 0) {
+      if (arr.get(index).compareTo(arr.get(newIndex)) * (toRight ? 1 : -1) > 0) {
         arr.swap(index, newIndex);
         index = newIndex;
       } else {
@@ -133,7 +134,8 @@ class ArrayMethods {
 
   // right is finish of part to sort
   // knownSorted is start of part to merge with
-  private static void headSortAdd(ArrayProxy arr, int right, int knownSorted) {
+  private static <T extends Comparable<T>> void headSortAdd(
+      ArrayProxy<T> arr, int right, int knownSorted) {
     if (knownSorted <= 1) return;
     forcePartSort(arr, 0, right, right + 1, 1);
     outerMerge(arr, 0, right, knownSorted, arr.length - 1, right + 1);
@@ -141,8 +143,8 @@ class ArrayMethods {
     headSortAdd(arr, (right - 1) / 2, right + 1);
   }
 
-  private static void forcePartSort(
-      ArrayProxy arr, int left, int right, int initialRange, int useDirection) {
+  private static <T extends Comparable<T>> void forcePartSort(
+      ArrayProxy<T> arr, int left, int right, int initialRange, int useDirection) {
     if (left == right) return;
     int m = (left + right) / 2;
     int leftNew = left + initialRange * useDirection;
@@ -153,14 +155,14 @@ class ArrayMethods {
     outerMerge(arr, leftNew, middleNew - 1, middleNew, rightNew, left);
   }
 
-  private static void outerMerge(
-      ArrayProxy arr, int left1, int right1, int left2, int right2, int writeStart) {
+  private static <T extends Comparable<T>> void outerMerge(
+      ArrayProxy<T> arr, int left1, int right1, int left2, int right2, int writeStart) {
     int pointerL = left1;
     int pointerR = left2;
     int pointerW = writeStart;
 
     while (pointerL <= right1 && pointerR <= right2) {
-      if ((arr.get(pointerL) - arr.get(pointerR)) <= 0) {
+      if (arr.get(pointerL).compareTo(arr.get(pointerR)) <= 0) {
         arr.swap(pointerW++, pointerL++);
       } else {
         arr.swap(pointerW++, pointerR++);
