@@ -2,89 +2,76 @@ package Task11.Task11_A;
 
 import java.io.DataInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 public class Main {
-  private static Parser in = new Parser(System.in);
+  private static final Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
     int commandsNum = in.nextInt();
     int sixth = in.nextInt();
-    int maximumChanges = in.nextInt();
+    int maximumChanges = in.nextInt() + 1;
 
-    List<Integer> values = new ArrayList<>(sixth * 6);
+    int[] values = new int[sixth * 6];
     for (int i = 0; i < sixth * 6; i++) {
-      values.add(in.nextInt());
+      values[i] = in.nextInt();
     }
-    values.sort(Integer::compareTo);
+    values = Arrays.stream(values).sorted().toArray();
 
-    List<List<Integer>> history = new ArrayList<>();
+    int[][] history = new int[maximumChanges][6];
     StringBuilder result = new StringBuilder();
+    int historyPointer = 0;
+    for (int j = 1; j <= 6; j++) {
+      history[historyPointer][j - 1] = values[j * sixth - 1];
+    }
 
     for (int i = 0; i < commandsNum; i++) {
-      var historyPart = new ArrayList<Integer>(6);
-      for (int j = 1; j <= 6; j++) {
-        historyPart.add(values.get(j * sixth - 1));
-      }
-      history.add(historyPart);
-
-      var command = new Integer[]{in.nextInt(), in.nextInt(), in.nextInt()};
-      if (command[0] == 1) {
-        int from = command[1];
-        int to = command[2];
-        int fromPos = binarySearch(from, values);
-        int toPos = binarySearch(to, values);
-        toPos = toPos < 0 ? -1 * toPos - 1 : toPos;
-        if (fromPos == toPos) {
-          values.set(fromPos, to);
-          continue;
+      var command = in.nextInt();
+      if (command == 1) {
+        int from = in.nextInt();
+        int to = in.nextInt();
+        int pointer = binarySearch(-1, values.length, from, values);
+        if (to < from) {
+          while (pointer > 0 && values[pointer - 1] > to) {
+            values[pointer] = values[pointer - 1];
+            --pointer;
+          }
+        } else if (to > from) {
+          while (pointer < values.length - 1 && values[pointer + 1] < to) {
+            values[pointer] = values[pointer + 1];
+            ++pointer;
+          }
         }
-        if (toPos > fromPos) {
-          toPos -= 1;
-          for (int j = fromPos; j < toPos; j++) {
-            values.set(j, values.get(j + 1));
-          }
-          values.set(toPos, to);
-        } else {
-          for (int j = fromPos; j > toPos; j--) {
-            values.set(j, values.get(j - 1));
-          }
-          values.set(toPos, to);
+        values[pointer] = to;
+
+        historyPointer = (historyPointer + 1) % maximumChanges;
+        for (int j = 1; j <= 6; j++) {
+          history[historyPointer][j - 1] = values[j * sixth - 1];
         }
       } else {
-        int toPast = command[1];
-        int pointer = command[2];
-        if (history.size() - 1 - toPast < 0) {
-          result.append(history.get(0).get(pointer - 1)).append('\n');
-        } else {
-          result.append(history.get(history.size() - 1 - toPast).get(pointer - 1)).append('\n');
-        }
+        int toPast = in.nextInt();
+        int pointer = in.nextInt();
+        result
+            .append(
+                history[(historyPointer - toPast + maximumChanges) % maximumChanges][pointer - 1])
+            .append('\n');
       }
     }
     System.out.print(result);
   }
 
-  private static int binarySearch(int key, List<Integer> arr) {
-    return binarySearch(-1, arr.size(), key, arr);
-  }
-
   // index of first key or bigger element
-  private static int binarySearch(int left, int right, int key, List<Integer> arr) {
+  private static int binarySearch(int left, int right, int key, int[] arr) {
     while (left + 1 < right) {
       int mid = (left + right) / 2;
-      if (arr.get(mid) < key) {
+      if (arr[mid] < key) {
         left = mid;
       } else {
         right = mid;
       }
     }
 
-    if (right < arr.size() && arr.get(right) == key) {
-      return right;
-    } else {
-      return -1 - right;
-    }
+    return right;
   }
 }
 
@@ -183,5 +170,3 @@ class Parser {
     return buffer[bufferPointer++];
   }
 }
-
-
