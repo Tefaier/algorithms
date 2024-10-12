@@ -6,114 +6,167 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
-  private static Parser in = new Parser(System.in);
+  private static final Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
-
+    int heapsNum = in.nextInt();
+    int commandsNum = in.nextInt();
+    var cluster = new BinomialHeapCluster<>(heapsNum, Integer.MIN_VALUE);
+    StringBuilder answer = new StringBuilder();
+    for (int i = 0; i < commandsNum; i++) {
+      int commandType = in.nextInt();
+      switch (commandType) {
+        case (0):
+          cluster.addValue(in.nextInt() - 1, in.nextInt());
+          break;
+        case 1:
+          cluster.moveElements(in.nextInt() - 1, in.nextInt() - 1);
+          break;
+        case 2:
+          cluster.deleteElement(in.nextInt() - 1);
+          break;
+        case 3:
+          cluster.changeValue(in.nextInt() - 1, in.nextInt());
+          break;
+        case 4:
+          answer.append(cluster.getMinimumValue(in.nextInt() - 1)).append('\n');
+          break;
+        case 5:
+          cluster.deleteMinimum(in.nextInt() - 1);
+          break;
+      }
+    }
+    System.out.print(answer);
   }
 }
 
 class BinomialHeapCluster<T extends Comparable<T>> {
   private BinomialHeap<T>[] heaps;
-  private List<BinomialHeap<T>.BinomialTree.Node> references;
+  private List<BinomialHeap<T>.Node> references = new ArrayList<>();
+  private final T minimumValue;
 
-  public BinomialHeapCluster(int heapsNumber) {
+  public BinomialHeapCluster(int heapsNumber, T minimumValue) {
+    this.minimumValue = minimumValue;
     this.heaps = new BinomialHeap[heapsNumber];
     for (int i = 0; i < heapsNumber; i++) {
       heaps[i] = new BinomialHeap<>();
     }
   }
 
-  public void addValue(T value, int heapIndex) {
+  public void addValue(int heapIndex, T value) {
+    BinomialHeap<T>.Node newNode = heaps[heapIndex].createNode(value);
+    newNode.id = references.size();
+    references.add(newNode);
+    heaps[heapIndex].insert(newNode);
+  }
 
+  public void moveElements(int fromHeapIndex, int toHeapIndex) {
+    heaps[toHeapIndex].merge(heaps[fromHeapIndex]);
+  }
+
+  public void deleteElement(int index) {
+    references.get(index).deleteSelf(minimumValue, references);
+  }
+
+  public void changeValue(int elementIndex, T newValue) {
+    references.get(elementIndex).setNewValue(newValue, references);
+  }
+
+  public T getMinimumValue(int heapIndex) {
+    return heaps[heapIndex].getMin();
+  }
+
+  public void deleteMinimum(int heapIndex) {
+    heaps[heapIndex].extractMin();
   }
 }
 
 class BinomialHeap<T extends Comparable<T>> {
-  class BinomialTree implements Comparable<BinomialTree> {
-    class Node implements Comparable<Node> {
-      T value;
-      List<Node> children;
-      Node parent;
-      // ownerHeap is set for root only
-      BinomialHeap<T> ownerHeap;
-      int id;
+  class Node implements Comparable<Node> {
+    T value;
+    List<Node> children;
+    Node parent;
+    // ownerHeap is set for root only
+    BinomialHeap<T> ownerHeap;
+    int id;
 
-      public Node(T value, int id) {
-        this.value = value;
-        this.id = id;
-        children = new ArrayList<>();
-      }
+    public Node(T value, int id) {
+      this.value = value;
+      this.id = id;
+      children = new ArrayList<>();
+    }
 
-      public static <T extends Comparable<T>> void swapIdentity(
-          BinomialHeap<T>.BinomialTree.Node node1,
-          BinomialHeap<T>.BinomialTree.Node node2,
-          List<BinomialHeap<T>.BinomialTree.Node> references) {
-        T temp = node1.value;
-        node1.value = node2.value;
-        node2.value = temp;
+    public static <T extends Comparable<T>> void swapIdentity(
+        BinomialHeap<T>.Node node1,
+        BinomialHeap<T>.Node node2,
+        List<BinomialHeap<T>.Node> references) {
+      T temp = node1.value;
+      node1.value = node2.value;
+      node2.value = temp;
 
-        int tempId = node1.id;
-        node1.id = node2.id;
-        node2.id = tempId;
+      int tempId = node1.id;
+      node1.id = node2.id;
+      node2.id = tempId;
 
-        if (references != null) {
-          references.set(node1.id, node1);
-          references.set(node2.id, node2);
-        }
-      }
-
-      public void deleteSelf(T smallestValue, List<Node> references) {
-        alterValue(smallestValue, references).ownerHeap.extractMin();
-      }
-
-      public void setNewValue(T newValue, List<Node> references) {
-        alterValue(newValue, references);
-      }
-
-      private Node alterValue(T newValue, List<Node> references) {
-        if (value.compareTo(newValue) < 0) {
-          value = newValue;
-          return siftDown(references);
-        } else {
-          value = newValue;
-          return siftUp(references);
-        }
-      }
-
-      private Node siftUp(List<Node> references) {
-        Node activeNode = this;
-        while (activeNode.parent != null) {
-          if (activeNode.parent.compareTo(activeNode) > 0) {
-            swapIdentity(activeNode, activeNode.parent, references);
-            activeNode = activeNode.parent;
-          } else {
-            break;
-          }
-        }
-        return activeNode;
-      }
-
-      private Node siftDown(List<Node> references) {
-        Node activeNode = this;
-        while (!activeNode.children.isEmpty()) {
-          Node minChild = activeNode.children.stream().min(Node::compareTo).get();
-          ;
-          if (minChild.compareTo(activeNode) < 0) {
-            swapIdentity(activeNode, minChild, references);
-            activeNode = minChild;
-          } else {
-            break;
-          }
-        }
-        return activeNode;
-      }
-
-      @Override
-      public int compareTo(Node o) {
-        return !o.value.equals(value) ? value.compareTo(o.value) : id - o.id;
+      if (references != null) {
+        references.set(node1.id, node1);
+        references.set(node2.id, node2);
       }
     }
+
+    public void deleteSelf(T smallestValue, List<Node> references) {
+      alterValue(smallestValue, references).ownerHeap.extractMin();
+    }
+
+    public void setNewValue(T newValue, List<Node> references) {
+      alterValue(newValue, references);
+    }
+
+    private Node alterValue(T newValue, List<Node> references) {
+      if (value.compareTo(newValue) < 0) {
+        value = newValue;
+        return siftDown(references);
+      } else {
+        value = newValue;
+        return siftUp(references);
+      }
+    }
+
+    private Node siftUp(List<Node> references) {
+      Node activeNode = this;
+      while (activeNode.parent != null) {
+        if (activeNode.parent.compareTo(activeNode) > 0) {
+          swapIdentity(activeNode, activeNode.parent, references);
+          activeNode = activeNode.parent;
+        } else {
+          break;
+        }
+      }
+      return activeNode;
+    }
+
+    private Node siftDown(List<Node> references) {
+      Node activeNode = this;
+      while (!activeNode.children.isEmpty()) {
+        Node minChild = activeNode.children.stream().min(Node::compareTo).get();
+        ;
+        if (minChild.compareTo(activeNode) < 0) {
+          swapIdentity(activeNode, minChild, references);
+          activeNode = minChild;
+        } else {
+          break;
+        }
+      }
+      return activeNode;
+    }
+
+    @Override
+    public int compareTo(Node o) {
+      return !o.value.equals(value) ? value.compareTo(o.value) : id - o.id;
+    }
+  }
+
+  class BinomialTree implements Comparable<BinomialTree> {
 
     private final Node root;
 
@@ -153,15 +206,15 @@ class BinomialHeap<T extends Comparable<T>> {
     trees = new ArrayList<>();
   }
 
-  private BinomialHeap(T element, int nodeId) {
+  private BinomialHeap(Node node) {
     trees = new ArrayList<>();
-    trees.add(new BinomialTree(element, nodeId));
+    trees.add(new BinomialTree(node));
     trees.get(0).root.ownerHeap = this;
   }
 
-  private BinomialHeap(List<BinomialTree.Node> nodes) {
+  private BinomialHeap(List<Node> nodes) {
     trees = new ArrayList<>();
-    for (BinomialTree.Node node : nodes) {
+    for (Node node : nodes) {
       // node.ownerHeap = this;
       trees.add(new BinomialTree(node));
     }
@@ -192,7 +245,7 @@ class BinomialHeap<T extends Comparable<T>> {
     int minIndex = -1;
     BinomialTree minTree = null;
 
-    for (int i = 1; i < trees.size(); i++) {
+    for (int i = 0; i < trees.size(); i++) {
       if (trees.get(i) == null) continue;
       if (minIndex == -1 || trees.get(i).compareTo(minTree) < 0) {
         minIndex = i;
@@ -204,7 +257,7 @@ class BinomialHeap<T extends Comparable<T>> {
   }
 
   // heap that calls this method empties heap in the argument
-  private void merge(BinomialHeap<T> otherHeap) {
+  public void merge(BinomialHeap<T> otherHeap) {
     int selfSize = trees.size();
     int otherSize = otherHeap.trees.size();
     int maxSize = Math.max(otherSize, selfSize);
@@ -212,8 +265,8 @@ class BinomialHeap<T extends Comparable<T>> {
     var resultTrees = new ArrayList<BinomialHeap<T>.BinomialTree>();
 
     for (int i = 0; i < maxSize; i++) {
-      var otherTree = i >= selfSize ? null : otherHeap.trees.get(i);
-      var selfTree = i >= otherSize ? null : trees.get(i);
+      var otherTree = i >= otherSize ? null : otherHeap.trees.get(i);
+      var selfTree = i >= selfSize ? null : trees.get(i);
 
       if (transferTree == null) {
         if (selfTree != null && otherTree != null) {
@@ -247,6 +300,7 @@ class BinomialHeap<T extends Comparable<T>> {
 
     for (var resultTree : resultTrees) {
       if (resultTree != null) {
+        resultTree.root.parent = null;
         resultTree.root.ownerHeap = this;
       }
     }
@@ -259,12 +313,15 @@ class BinomialHeap<T extends Comparable<T>> {
     return locateMinTree().minTree.root.value;
   }
 
-  public void insert(T value, int nodeId) {
-    BinomialHeap<T> newHeap = new BinomialHeap<>(value, nodeId);
+  public void insert(Node node) {
+    BinomialHeap<T> newHeap = new BinomialHeap<>(node);
     merge(newHeap);
   }
-}
 
+  public Node createNode(T value) {
+    return new Node(value, 0);
+  }
+}
 
 // https://habr.com/ru/articles/91283/
 class Parser {
