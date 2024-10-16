@@ -10,125 +10,126 @@ public class Main {
   public static void main(String[] args) {
     int valuesNum = in.nextInt();
 
-    List<Integer> values = new ArrayList<>(valuesNum);
+    int[] values = new int[valuesNum];
     for (int i = 0; i < valuesNum; i++) {
-      values.add(in.nextInt());
+      values[i] = in.nextInt();
     }
 
-    SegmentTree tree = new SegmentTree(values);
+    SquareBreak thing = new SquareBreak(values);
     StringBuilder result = new StringBuilder();
     int requestNum = in.nextInt();
     for (int i = 0; i < requestNum; i++) {
       String command = in.nextString(5);
       if (command.equals("U")) {
-        tree.changeValue(in.nextInt() - 1, in.nextInt());
+        thing.changeIndexValue(in.nextInt() - 1, in.nextInt());
       } else {
-        result.append(tree.getRange(in.nextInt() - 1, in.nextInt() - 1)).append('\n');
+        result.append(thing.collectSum(in.nextInt() - 1, in.nextInt() - 1)).append('\n');
       }
     }
     System.out.print(result);
   }
 }
 
-class SegmentTree {
+class SquareBreak {
   private class Node {
-    public Map<Integer, Integer> valueCounter;
-    public Node left;
-    public Node right;
-    public int rangeFrom;
-    public int rangeTo;
-    public long sum;
+    public Map<Integer, Integer> valueCounter = new HashMap<>();
+    public int leftIndex;
+    public int rightIndex;
 
-    public Node(int rangeFrom, int rangeTo) {
-      this.valueCounter = new HashMap<>();
-      this.rangeFrom = rangeFrom;
-      this.rangeTo = rangeTo;
-      this.sum = 0;
-    }
-
-    public Node(Integer value, int rangeFrom, int rangeTo) {
-      this.valueCounter = new HashMap<>();
-      valueCounter.put(value, 1);
-      this.rangeFrom = rangeFrom;
-      this.rangeTo = rangeTo;
-      this.sum = value;
-    }
-
-    public void combine(Node left, Node right) {
-      if (left != null) {
-        valueCounter.putAll(left.valueCounter);
-        sum = left.sum;
-      }
-      for (Map.Entry<Integer, Integer> entry : right.valueCounter.entrySet()) {
-        if (entry.getValue() == 0) continue;
-        if (valueCounter.getOrDefault(entry.getKey(), 0) == 0) sum += entry.getKey();
-        valueCounter.put(
-            entry.getKey(), valueCounter.getOrDefault(entry.getKey(), 0) + entry.getValue());
+    public Node(int leftIndex, int rightIndex, int[] arr) {
+      this.leftIndex = leftIndex;
+      this.rightIndex = rightIndex;
+      for (int i = leftIndex; i <= rightIndex; i++) {
+        valueCounter.put(arr[i], valueCounter.getOrDefault(arr[i], 0) + 1);
       }
     }
 
     public void replaceValue(Integer from, Integer to) {
       valueCounter.put(from, valueCounter.get(from) - 1);
-      if (valueCounter.get(from) == 0) sum -= from;
-      if (valueCounter.getOrDefault(to, 0) == 0) sum += to;
+      if (valueCounter.get(from) == 0) valueCounter.remove(from);
       valueCounter.put(to, valueCounter.getOrDefault(to, 0) + 1);
     }
   }
 
-  private Node root;
-  private int size;
-  private List<Integer> underlineArray;
+  private int[] underlineArray;
+  private int[] nodeIndex;
+  private Node[] nodes;
 
-  SegmentTree(List<Integer> array) {
-    underlineArray = array;
-    size = array.size();
-    root = buildRange(array, 0, size - 1);
+  public SquareBreak(int[] arr) {
+    underlineArray = arr;
+    nodeIndex = new int[underlineArray.length];
+    buildNodes();
   }
 
-  private Node buildRange(List<Integer> array, int from, int to) {
-    Node node;
-    if (from != to) {
-      int mid = (from + to) / 2;
-      node = new Node(from, to);
-      node.left = buildRange(array, from, mid);
-      node.right = buildRange(array, mid + 1, to);
-      node.combine(node.left, node.right);
+  private void buildNodes() {
+    int nodeSize = (int) Math.sqrt(underlineArray.length);
+    int nodesNum = Math.ceilDiv(underlineArray.length, nodeSize);
+    nodes = new Node[nodesNum];
+    int l = 0;
+    int r = l + nodeSize;
+    for (int i = 0; i < nodesNum; i++) {
+      nodes[i] = new Node(l, r - 1, underlineArray);
+      Arrays.fill(nodeIndex, l, r, i);
+      l = r;
+      r += nodeSize;
+      r = Math.min(underlineArray.length, r);
+    }
+  }
+
+  public void changeIndexValue(int index, int newValue) {
+    nodes[nodeIndex[index]].replaceValue(underlineArray[index], newValue);
+    underlineArray[index] = newValue;
+  }
+
+  public long collectSum(int left, int right) {
+    int nodeLeftIndex = nodeIndex[left];
+    int nodeRightIndex = nodeIndex[right];
+    Node nodeLeft = nodes[nodeLeftIndex];
+    Node nodeRight = nodes[nodeRightIndex];
+    long sum = 0;
+    Set<Integer> metNumbers = new HashSet<>();
+
+    if (nodeLeft.leftIndex == left && nodeLeft.rightIndex <= right) {
+      for (Map.Entry<Integer, Integer> entry : nodeLeft.valueCounter.entrySet()) {
+        metNumbers.add(entry.getKey());
+        sum += entry.getKey();
+      }
     } else {
-      node = new Node(array.get(from), from, to);
-    }
-    return node;
-  }
-
-  public Long getRange(int l, int r) {
-    Node rangeNode = new Node(0, 0);
-    getRange(l, r, root, rangeNode);
-    return rangeNode.sum;
-  }
-
-  private void getRange(int rl, int rr, Node cNode, Node collectNode) {
-    if (cNode.rangeTo <= rr && cNode.rangeFrom >= rl) {
-      collectNode.combine(null, cNode);
-      return;
-    }
-    if (cNode.rangeTo < rl || cNode.rangeFrom > rr) return;
-    getRange(rl, rr, cNode.left, collectNode);
-    getRange(rl, rr, cNode.right, collectNode);
-  }
-
-  public void changeValue(int index, int newValue) {
-    int eraseValue = underlineArray.get(index);
-    underlineArray.set(index, newValue);
-
-    Node referenceNode = root;
-    while (referenceNode.rangeFrom != referenceNode.rangeTo) {
-      referenceNode.replaceValue(eraseValue, newValue);
-      if (index > referenceNode.left.rangeTo) {
-        referenceNode = referenceNode.right;
-      } else {
-        referenceNode = referenceNode.left;
+      for (int i = left; i <= Math.min(nodeLeft.rightIndex, right); i++) {
+        if (!metNumbers.contains(underlineArray[i])) {
+          metNumbers.add(underlineArray[i]);
+          sum += underlineArray[i];
+        }
       }
     }
-    referenceNode.replaceValue(eraseValue, newValue);
+
+    if (nodeLeftIndex != nodeRightIndex && nodeRight.rightIndex == right) {
+      for (Map.Entry<Integer, Integer> entry : nodeRight.valueCounter.entrySet()) {
+        if (!metNumbers.contains(entry.getKey())) {
+          metNumbers.add(entry.getKey());
+          sum += entry.getKey();
+        }
+      }
+    } else if (nodeLeftIndex != nodeRightIndex) {
+      for (int i = nodeRight.leftIndex; i <= right; i++) {
+        if (!metNumbers.contains(underlineArray[i])) {
+          metNumbers.add(underlineArray[i]);
+          sum += underlineArray[i];
+        }
+      }
+    }
+
+    for (int i = nodeLeftIndex + 1; i < nodeRightIndex; i++) {
+      Node inNode = nodes[i];
+      for (Map.Entry<Integer, Integer> entry : inNode.valueCounter.entrySet()) {
+        if (!metNumbers.contains(entry.getKey())) {
+          metNumbers.add(entry.getKey());
+          sum += entry.getKey();
+        }
+      }
+    }
+
+    return sum;
   }
 }
 
