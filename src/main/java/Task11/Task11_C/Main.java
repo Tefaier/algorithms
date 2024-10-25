@@ -32,7 +32,7 @@ public class Main {
 
 class SquareBreak {
   private class Node {
-    public Map<Integer, Integer> valueCounter = new HashMap<>();
+    public Map<Integer, Integer> valueCounter = new TreeMap<>();
     public int leftIndex;
     public int rightIndex;
 
@@ -87,7 +87,7 @@ class SquareBreak {
     Node nodeLeft = nodes[nodeLeftIndex];
     Node nodeRight = nodes[nodeRightIndex];
     long sum = 0;
-    Set<Integer> metNumbers = new HashSet<>();
+    Set<Integer> metNumbers = new TreeSet<>();
 
     if (nodeLeft.leftIndex == left && nodeLeft.rightIndex <= right) {
       for (Map.Entry<Integer, Integer> entry : nodeLeft.valueCounter.entrySet()) {
