@@ -112,9 +112,8 @@ class ArrayMethods {
   }
 
   private static <T extends Comparable<T>> void merge(ArrayProxy<T> arr) {
-    int middle = (arr.length + 1) / 2;
-    forcePartSort(arr, middle, arr.length - 1, arr.length - middle, -1);
-    headSortAdd(arr, (middle / 2) - 1, middle);
+    int middle = arr.arr1.length / 2 - 1;
+    headSortAdd(arr, middle, arr.arr1.length);
     swipeElement(arr, 0, true, arr.length);
   }
 
