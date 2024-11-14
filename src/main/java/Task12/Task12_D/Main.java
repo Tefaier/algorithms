@@ -7,36 +7,13 @@ import java.util.*;
 public class Main {
   private static final Parser in = new Parser(System.in);
 
-  private static void test() {
-    Random random = new Random();
-    while (true) {
-      HashSet<Integer> values = new HashSet<>();
-      int n = random.nextInt(1, 10000);
-      for (int i = 0; i < n; i++) {
-        values.add(random.nextInt(-1000000000, 1000000000));
-      }
-      int r = random.nextInt(1000);
-      FKS fks = new FKS();
-      int[] values2 =
-          Arrays.stream(values.toArray(new Integer[0])).mapToInt(Integer::intValue).toArray();
-      fks.initialize(values2);
-      for (int i = 0; i < r; i++) {
-        int val = random.nextInt(-1000000000, 1000000000);
-        if (fks.contains(val) != values.contains(val)) {
-          System.out.println("ERROR");
-        }
-      }
-    }
-  }
-
   public static void main(String[] args) {
-    // test();
     int valuesNum = in.nextInt();
-    int[] values = new int[valuesNum];
+    Integer[] values = new Integer[valuesNum];
     for (int i = 0; i < valuesNum; i++) {
       values[i] = in.nextInt();
     }
-    FKS frozenSet = new FKS();
+    FKS<Integer> frozenSet = new FKS();
     frozenSet.initialize(values);
 
     int requestNum = in.nextInt();
@@ -60,8 +37,8 @@ class UniversalHashFunction {
     this.b = b;
   }
 
-  public int calc(int input) {
-    return (int) (((a * input) % primeModulo + b) % primeModulo);
+  public int calc(Object input) {
+    return (int) (((a * input.hashCode()) % primeModulo + b) % primeModulo);
   }
 
   public static UniversalHashFunction generate() {
@@ -70,12 +47,12 @@ class UniversalHashFunction {
   }
 }
 
-class FKS {
+class FKS<K> {
   private class InnerFKS {
     private UniversalHashFunction selfHash;
-    private List<Optional<Integer>> buckets;
+    private List<Optional<K>> buckets;
 
-    public InnerFKS(List<Integer> values) {
+    public InnerFKS(List<K> values) {
       boolean result;
       do {
         buckets = new ArrayList<>();
@@ -87,11 +64,11 @@ class FKS {
       } while (!result);
     }
 
-    private boolean tryGenerating(List<Integer> values) {
+    private boolean tryGenerating(List<K> values) {
       boolean[] encountered = new boolean[buckets.size()];
 
       selfHash = UniversalHashFunction.generate();
-      for (Integer value : values) {
+      for (K value : values) {
         int index = selfHash.calc(value) % encountered.length;
         index += index < 0 ? encountered.length : 0;
         if (encountered[index]) {
@@ -103,7 +80,7 @@ class FKS {
       return true;
     }
 
-    public boolean contains(int value) {
+    public boolean contains(K value) {
       if (buckets.isEmpty()) return false;
       int selfIndex = selfHash.calc(value) % buckets.size();
       selfIndex += selfIndex < 0 ? buckets.size() : 0;
@@ -111,13 +88,13 @@ class FKS {
     }
   }
 
-  private int[] possibleValues;
+  private K[] possibleValues;
   private UniversalHashFunction outerHash;
   private List<InnerFKS> bucketFKSes = new ArrayList<>();
 
-  public void initialize(int[] possibleValues) {
+  public void initialize(K[] possibleValues) {
     this.possibleValues = possibleValues;
-    List<List<Integer>> result;
+    List<List<K>> result;
     do {
       result = tryGenerating();
     } while (result.stream().map(val -> val.size() * val.size()).reduce(0, Integer::sum)
@@ -127,14 +104,14 @@ class FKS {
     }
   }
 
-  private List<List<Integer>> tryGenerating() {
-    List<List<Integer>> buckets = new ArrayList<>();
+  private List<List<K>> tryGenerating() {
+    List<List<K>> buckets = new ArrayList<>();
     for (int i = 0; i < possibleValues.length; i++) {
       buckets.add(new ArrayList<>());
     }
 
     outerHash = UniversalHashFunction.generate();
-    for (int possibleValue : possibleValues) {
+    for (K possibleValue : possibleValues) {
       int index = outerHash.calc(possibleValue) % possibleValues.length;
       index += index < 0 ? possibleValues.length : 0;
       buckets.get(index).add(possibleValue);
@@ -142,7 +119,7 @@ class FKS {
     return buckets;
   }
 
-  public boolean contains(int value) {
+  public boolean contains(K value) {
     if (bucketFKSes.isEmpty()) return false;
     int outerIndex = outerHash.calc(value) % bucketFKSes.size();
     outerIndex += outerIndex < 0 ? bucketFKSes.size() : 0;
