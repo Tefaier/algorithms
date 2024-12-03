@@ -215,7 +215,7 @@ class DecodableTree<V extends Comparable<V>, E extends Edge<V>> extends Unordere
       HashMap<V, V> parentsInfo,
       HashMap<V, Integer> activeConnected,
       List<V> leaves) {
-    var edges = edgesMap.get(from);
+    var edges = edgesMap.getOrDefault(from, new ArrayList<>());
     for (E edge : edges) {
       if (edge.getTo() == traceBack) continue;
       parentsInfo.put(edge.getTo(), from);
