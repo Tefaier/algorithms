@@ -8,6 +8,37 @@ public class Main {
   private static final Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
+    int participants = in.nextInt();
+    int[][] parameters = new int[participants][3];
+    for (int i = 0; i < participants; i++) {
+      parameters[i][0] = in.nextInt();
+      parameters[i][1] = in.nextInt();
+      parameters[i][2] = in.nextInt();
+    }
+
+    Line OXCut = new Line(new Point(0, 0), new Vector(1, 0));
+    Line OYCut = new Line(new Point(0, 0), new Vector(0, -1));
+
+    StringBuilder results = new StringBuilder();
+    for (int i = 0; i < participants; i++) {
+      ArrayList<Line> lines = new ArrayList<>();
+      lines.add(OXCut);
+      lines.add(OYCut);
+      double iXMul = 1.0 / parameters[i][0];
+      double iYMul = 1.0 / parameters[i][1];
+      double iC = 1.0 / parameters[i][2];
+      for (int j = 0; j < participants; j++) {
+        if (i == j) continue;
+        lines.add(
+            new Line(
+                (1.0 / parameters[j][0]) - iXMul,
+                (1.0 / parameters[j][1]) - iYMul,
+                (1.0 / parameters[j][2]) - iC));
+      }
+      var intersect = GeometryMethods.intersectLinesAsHalfplanes(lines);
+      results.append(!intersect.isEmpty() ? "Yes\n" : "No\n");
+    }
+    System.out.println(results);
   }
 }
 
@@ -96,12 +127,16 @@ class GeometryMethods {
   public static Line boxL = new Line(1, 0, calculationBoundingBox);
 
   public static boolean equalDoubles(double d1, double d2) {
-    return Math.abs(d1 - d2) < 1e-6;
+    return Math.abs(d1 - d2) < 1e-30;
   }
 
   public static double distancePointToLine2(Point point, Line line) {
     return Math.pow(line.applyPoint(point), 2.0)
         / (Math.pow(line.xMul, 2.0) + Math.pow(line.yMul, 2.0));
+  }
+
+  public static double dotProduct(Vector vector1, Vector vector2) {
+    return vector1.x * vector2.x + vector1.y * vector2.y;
   }
 
   // cross product CW from vector 1 to vector 2
@@ -114,7 +149,9 @@ class GeometryMethods {
     if (equalDoubles(coeff, 0.0)) {
       return null;
     }
-    return new Point((line1.yMul * line2.c - line2.yMul * line1.c) / coeff, (line1.c * line2.xMul - line2.c * line1.xMul) / coeff);
+    return new Point(
+        (line1.yMul * line2.c - line2.yMul * line1.c) / coeff,
+        (line1.c * line2.xMul - line2.c * line1.xMul) / coeff);
   }
 
   public static Optional<Point> segmentsIntersection(Point p1, Point p2, Point p3, Point p4) {
@@ -134,19 +171,6 @@ class GeometryMethods {
     return Optional.empty();
   }
 
-  // lines must be sorted
-  // returns them as subsequence
-  public static ArrayList<Line> createArc(ArrayList<Line> group) {
-    ArrayList<Line> stack = new ArrayList<>();
-    for (Line line : group) {
-      while (stack.size() >= 2 && line.CWLocation(linesIntersection(stack.get(stack.size() - 1), stack.get(stack.size() - 2))) < 0) {
-        stack.remove(stack.size() - 1);
-      }
-      stack.add(line);
-    }
-    return stack;
-  }
-
   private static Point makeLineInfiniteCut(Line line, boolean forward) {
     double angle = line.getAngle();
     if (angle > -Math.PI / 4 && angle <= Math.PI / 4) {
@@ -158,74 +182,100 @@ class GeometryMethods {
     if (angle > 3 * Math.PI / 4 || angle <= -3 * Math.PI / 4) {
       return linesIntersection(line, forward ? boxL : boxR);
     }
-    return linesIntersection(line, forward ? boxL : boxR);
+    return linesIntersection(line, forward ? boxD : boxU);
   }
 
-  public static ArrayList<Point> createIntersectionPoints(ArrayList<Line> group, boolean withInfinities) {
+  public static boolean outOfBoundingBox(Point point) {
+    return Math.max(Math.abs(point.x), Math.abs(point.y)) > calculationBoundingBox;
+  }
+
+  public static ArrayList<Point> createIntersectionPoints(
+      ArrayList<Line> group, boolean withInfinities, boolean cyclic) {
     ArrayList<Point> points = new ArrayList<>();
     if (withInfinities) points.add(makeLineInfiniteCut(group.get(0), false));
     for (int i = 1; i < group.size(); i++) {
       points.add(linesIntersection(group.get(i - 1), group.get(i)));
     }
+    if (cyclic && group.size() > 1)
+      points.add(linesIntersection(group.get(0), group.get(group.size() - 1)));
     if (withInfinities) points.add(makeLineInfiniteCut(group.get(group.size() - 1), true));
     return points;
   }
 
-  // bottom, top in increasing angle order
-  // expected to have no useless bounding box lines?
-  public static ArrayList<Point> mergeArcs(ArrayList<Line> bottom, ArrayList<Line> top) {
-    ArrayList<Point> pointsBottom = createIntersectionPoints(bottom, true);
-    ArrayList<Point> pointsTop = createIntersectionPoints(top, true);
-    Collections.reverse(pointsTop);
-    ArrayList<Point> newPointsBottom = new ArrayList<>();
-    ArrayList<Point> newPointsTop = new ArrayList<>();
-    int i = 1;
-    int j = 1;
-    int intersectionsNumber = 0;
-    while (i < pointsBottom.size() && j < pointsTop.size() && intersectionsNumber < 2) {
-      var intersection = segmentsIntersection(pointsBottom.get(i), pointsBottom.get(i - 1), pointsTop.get(j), pointsTop.get(j - 1));
-      if (intersection.isPresent() && intersection.get() != pointsBottom.get(i - 1) && intersection.get() != pointsTop.get(j - 1)) {
-        ++intersectionsNumber;
-        newPointsBottom.add(intersection.get());
-        newPointsTop.add(intersection.get());
-      }
-      if (pointsBottom.get(i).x < pointsTop.get(j).x) {
-        if (intersectionsNumber == 1 && pointsBottom.get(i) != newPointsBottom.get(newPointsBottom.size() - 1)) {
-          newPointsBottom.add(pointsBottom.get(i));
+  public static ArrayList<Point> intersectLinesAsHalfplanes(List<Line> lines) {
+    lines.add(boxD);
+    lines.add(boxU);
+    lines.add(boxR);
+    lines.add(boxL);
+    lines.sort(Comparator.comparingDouble(Line::getAngle));
+    LinkedList<Line> activeLines = new LinkedList<>();
+    for (Line line : lines) {
+      if (activeLines.size() >= 1) {
+        // check it is parallel to the last in list
+        if (linesIntersection(activeLines.get(activeLines.size() - 1), line) == null) {
+          int location = line.CWLocation(activeLines.get(activeLines.size() - 1).getSamplePoint());
+          if (location <= 0) {
+            if (dotProduct(activeLines.get(activeLines.size() - 1).lineVector, line.lineVector)
+                < 0) {
+              // opposite direction
+              return new ArrayList<>();
+            }
+          } else {
+            continue;
+          }
         }
-        i++;
-      } else {
-        if (intersectionsNumber == 1 && pointsTop.get(i) != newPointsTop.get(newPointsBottom.size() - 1)) {
-          newPointsTop.add(pointsTop.get(j));
-        }
-        j++;
       }
-    }
-    ArrayList<Point> ans = new ArrayList<>();
-    for (int k = 0; k < newPointsTop.size(); k++) {
-      ans.add(newPointsTop.get(i));
-    }
-    // the same point of intersection is ignored
-    for (int k = newPointsBottom.size() - 2; k > 0; k--) {
-      ans.add(newPointsBottom.get(k));
-    }
-    return ans;
-  }
 
-  public static ArrayList<Point> intersectLines(List<Line> lines) {
-    lines.sort((line1, line2) -> Double.compare(line1.getAngle(), line2.getAngle()));
-    ArrayList<Line> group1 = new ArrayList<>();
-    ArrayList<Line> group2 = new ArrayList<>();
-    for (int i = 0; i < lines.size(); i++) {
-      if (lines.get(i).getAngle() < Math.PI / 2) {
-        group1.add(lines.get(i));
-      } else {
-        group2.add(lines.get(i));
+      if (activeLines.size() == 0) {
+        activeLines.addLast(line);
+        continue;
       }
+      // logic based on if above
+      if (activeLines.size() == 1) {
+        if (linesIntersection(activeLines.get(activeLines.size() - 1), line) == null) {
+          activeLines.pollLast();
+        }
+        activeLines.addLast(line);
+        continue;
+      }
+
+      // now not parallel to the last for sure
+      Point cut =
+          linesIntersection(
+              activeLines.get(activeLines.size() - 1), activeLines.get(activeLines.size() - 2));
+      while (line.CWLocation(cut) <= 0) {
+        activeLines.pollLast();
+        // check on creation of single point intersection
+        if (crossProduct(activeLines.getLast().lineVector, line.lineVector) <= 0)
+          return new ArrayList<>();
+        if (activeLines.size() == 1) {
+          break;
+        }
+        cut =
+            linesIntersection(
+                activeLines.get(activeLines.size() - 1), activeLines.get(activeLines.size() - 2));
+      }
+
+      // can't be 0 here
+      if (activeLines.size() == 1) {
+        activeLines.addLast(line);
+        continue;
+      }
+
+      cut = linesIntersection(activeLines.get(0), activeLines.get(1));
+      while (line.CWLocation(cut) <= 0) {
+        activeLines.pollFirst();
+        // can't be single point anymore after check in previous while
+        if (activeLines.size() == 1) {
+          return new ArrayList<>();
+        }
+        cut = linesIntersection(activeLines.get(0), activeLines.get(1));
+      }
+
+      activeLines.addLast(line);
     }
-    ArrayList<Line> bottom = createArc(group1);
-    ArrayList<Line> top = createArc(group2);
-    return mergeArcs(bottom, top);
+
+    return createIntersectionPoints(new ArrayList<>(activeLines), false, true);
   }
 }
 
