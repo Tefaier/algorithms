@@ -19,7 +19,7 @@ public class Main {
         hull.addPoint(dots.get(dots.size() - 1));
       }
 
-      int requestsNumber = random.nextInt(1, 100);
+      int requestsNumber = random.nextInt(1, 2);
       for (int i = 0; i < requestsNumber; i++) {
         if (random.nextBoolean()) {
           Line touchLine = new Line(random.nextInt(-limit, limit), random.nextInt(-limit, limit), 0);
@@ -37,15 +37,13 @@ public class Main {
             System.out.println("ERROR");
           }
         } else {
-          dots.add(new Point(random.nextInt(-limit, limit), random.nextInt(-limit, limit)));
-          hull.addPoint(dots.get(dots.size() - 1));
         }
       }
     }
   }
 
   public static void main(String[] args) {
-    // test();
+    test();
     Hull2D hull = new Hull2D();
     int dotsNumber = in.nextInt();
     for (int i = 0; i < dotsNumber; i++) {
@@ -192,24 +190,20 @@ class GeometryMethods {
 interface WalkableKey<T> extends Comparable<WalkableKey<T>> {
   public T getVal();
 
-  public T getStrictOrderVal();
-
   public WalkableKey<T> prevVal();
 
   public WalkableKey<T> nextVal();
 }
 
-class WalkableIntegerSecondUp implements WalkableKey<Integer> {
+class WalkableInteger implements WalkableKey<Integer> {
   public int val;
-  protected int priority;
 
-  public WalkableIntegerSecondUp(Point point) {
-    this((int) Math.round(point.x), (int) Math.round(point.y));
+  public WalkableInteger(Point point) {
+    this((int) Math.round(point.x));
   }
 
-  public WalkableIntegerSecondUp(int val, int priority) {
+  public WalkableInteger(int val) {
     this.val = val;
-    this.priority = priority;
   }
 
   @Override
@@ -218,70 +212,33 @@ class WalkableIntegerSecondUp implements WalkableKey<Integer> {
   }
 
   @Override
-  public Integer getStrictOrderVal() {
-    return priority;
+  public WalkableInteger prevVal() {
+    return new WalkableInteger(
+        val == Integer.MIN_VALUE ? Integer.MIN_VALUE : val - 1);
   }
 
   @Override
-  public WalkableIntegerSecondUp prevVal() {
-    return new WalkableIntegerSecondUp(
-        val == Integer.MIN_VALUE ? Integer.MIN_VALUE : val - 1, Integer.MAX_VALUE);
-  }
-
-  @Override
-  public WalkableIntegerSecondUp nextVal() {
-    return new WalkableIntegerSecondUp(
-        val == Integer.MAX_VALUE ? Integer.MAX_VALUE : val + 1, Integer.MIN_VALUE);
+  public WalkableInteger nextVal() {
+    return new WalkableInteger(
+        val == Integer.MAX_VALUE ? Integer.MAX_VALUE : val + 1);
   }
 
   @Override
   public int compareTo(WalkableKey<Integer> o) {
-    return val == o.getVal()
-        ? Integer.compare(priority, o.getStrictOrderVal())
-        : Integer.compare(val, o.getVal());
-  }
-}
-
-class WalkableIntegerSecondDown implements WalkableKey<Integer> {
-  public int val;
-  protected int priority;
-
-  public WalkableIntegerSecondDown(Point point) {
-    this((int) Math.round(point.x), (int) Math.round(point.y));
-  }
-
-  public WalkableIntegerSecondDown(int val, int priority) {
-    this.val = val;
-    this.priority = priority;
+    return Integer.compare(val, o.getVal());
   }
 
   @Override
-  public Integer getVal() {
-    return val;
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    WalkableInteger that = (WalkableInteger) o;
+    return val == that.val;
   }
 
   @Override
-  public Integer getStrictOrderVal() {
-    return priority;
-  }
-
-  @Override
-  public WalkableIntegerSecondDown prevVal() {
-    return new WalkableIntegerSecondDown(
-        val == Integer.MIN_VALUE ? Integer.MIN_VALUE : val - 1, Integer.MIN_VALUE);
-  }
-
-  @Override
-  public WalkableIntegerSecondDown nextVal() {
-    return new WalkableIntegerSecondDown(
-        val == Integer.MAX_VALUE ? Integer.MAX_VALUE : val + 1, Integer.MAX_VALUE);
-  }
-
-  @Override
-  public int compareTo(WalkableKey<Integer> o) {
-    return val == o.getVal()
-        ? Integer.compare(o.getStrictOrderVal(), priority)
-        : Integer.compare(val, o.getVal());
+  public int hashCode() {
+    return Objects.hashCode(val);
   }
 }
 
@@ -378,7 +335,18 @@ class DecTree<K, L> {
 
   public void insert(WalkableKey<K> value, L load) {
     if (find(value)) {
-      return;
+      Node tmp = root;
+      while (tmp != null) {
+        if (tmp.value.equals(value)) {
+          tmp.load = load;
+          return;
+        }
+        if (tmp.value.compareTo(value) > 0) {
+          tmp = tmp.left;
+        } else {
+          tmp = tmp.right;
+        }
+      }
     }
     size++;
     Node node = new Node(value, load);
@@ -389,7 +357,7 @@ class DecTree<K, L> {
   public boolean find(WalkableKey<K> value) {
     Node tmp = root;
     while (tmp != null) {
-      if (tmp.value == value) {
+      if (tmp.value.equals(value)) {
         return true;
       }
       if (tmp.value.compareTo(value) > 0) {
@@ -543,14 +511,23 @@ class Hull2D {
 
   public void addPoint(Point point) {
     if (lowerBound.getSize() == 0) {
-      lowerBound.insert(new WalkableIntegerSecondDown(point), point);
-      upperBound.insert(new WalkableIntegerSecondUp(point), point);
+      lowerBound.insert(new WalkableInteger(point), point);
+      upperBound.insert(new WalkableInteger(point), point);
       return;
     }
     if (isInside(point)) return;
     if (lowerBound.getSize() == 1) {
-      lowerBound.insert(new WalkableIntegerSecondDown(point), point);
-      upperBound.insert(new WalkableIntegerSecondUp(point), point);
+      if (lowerBound.getKth(0).x == point.x) {
+        if (lowerBound.getKth(0).y > point.y) {
+          lowerBound.insert(new WalkableInteger(point), point);
+        }
+        if (upperBound.getKth(0).y < point.y) {
+          upperBound.insert(new WalkableInteger(point), point);
+        }
+      } else {
+        lowerBound.insert(new WalkableInteger(point), point);
+        upperBound.insert(new WalkableInteger(point), point);
+      }
       return;
     }
     var coverLower = getCoverSegment(lowerBound, point.x);
@@ -559,36 +536,51 @@ class Hull2D {
       var toKeepL = getR(lowerBound, point, 0, lowerBound.getSize() - 1, false);
       var toKeepU = getR(upperBound, point, 0, upperBound.getSize() - 1, true);
       lowerBound.deleteRange(
-          new WalkableIntegerSecondDown(Integer.MIN_VALUE, 0),
-          new WalkableIntegerSecondDown(toKeepL.point1).prevVal());
+          new WalkableInteger(Integer.MIN_VALUE),
+          new WalkableInteger(toKeepL.point1).prevVal());
       upperBound.deleteRange(
-          new WalkableIntegerSecondUp(Integer.MIN_VALUE, 0),
-          new WalkableIntegerSecondUp(toKeepU.point1).prevVal());
+          new WalkableInteger(Integer.MIN_VALUE),
+          new WalkableInteger(toKeepU.point1).prevVal());
+      lowerBound.insert(new WalkableInteger(point), point);
+      upperBound.insert(new WalkableInteger(point), point);
     } else if (coverLower.point1Index == lowerBound.getSize()) {
       var toKeepL = getL(lowerBound, point, 0, lowerBound.getSize() - 1, false);
       var toKeepU = getL(upperBound, point, 0, upperBound.getSize() - 1, true);
       lowerBound.deleteRange(
-          new WalkableIntegerSecondDown(toKeepL.point1).nextVal(),
-          new WalkableIntegerSecondDown(Integer.MAX_VALUE, 0));
+          new WalkableInteger(toKeepL.point1).nextVal(),
+          new WalkableInteger(Integer.MAX_VALUE));
       upperBound.deleteRange(
-          new WalkableIntegerSecondUp(toKeepU.point1).nextVal(),
-          new WalkableIntegerSecondUp(Integer.MAX_VALUE, 0));
+          new WalkableInteger(toKeepU.point1).nextVal(),
+          new WalkableInteger(Integer.MAX_VALUE));
+      lowerBound.insert(new WalkableInteger(point), point);
+      upperBound.insert(new WalkableInteger(point), point);
     } else {
-      var toKeepL1 = getL(lowerBound, point, 0, coverLower.point1Index, false);
-      var toKeepL2 =
-          getR(lowerBound, point, coverLower.point1Index + 1, lowerBound.getSize() - 1, false);
-      var toKeepU1 = getL(upperBound, point, 0, coverUpper.point1Index, true);
-      var toKeepU2 =
-          getR(upperBound, point, coverUpper.point1Index + 1, upperBound.getSize() - 1, true);
-      lowerBound.deleteRange(
-          new WalkableIntegerSecondDown(toKeepL1.point1).nextVal(),
-          new WalkableIntegerSecondDown(toKeepL2.point1).prevVal());
-      upperBound.deleteRange(
-          new WalkableIntegerSecondUp(toKeepU1.point1).nextVal(),
-          new WalkableIntegerSecondUp(toKeepU2.point1).prevVal());
+      boolean isAbove =
+          GeometryMethods.segmentsIntersection(
+                  coverLower.point1, coverLower.point2, point, new Point(point.x, Integer.MIN_VALUE))
+              .isPresent();
+      if (isAbove) {
+        var toKeepU1 = getL(upperBound, point, 0, coverUpper.point1Index, true);
+        var toKeepU2 =
+            getR(upperBound, point, coverUpper.point1Index + 1, upperBound.getSize() - 1, true);
+        upperBound.deleteRange(
+            new WalkableInteger(toKeepU1.point1).nextVal(),
+            new WalkableInteger(toKeepU2.point1).prevVal());
+        if (toKeepU1.point1.x == point.x) upperBound.delete(new WalkableInteger(toKeepU1.point1));
+        if (toKeepU2.point1.x == point.x) upperBound.delete(new WalkableInteger(toKeepU2.point1));
+        upperBound.insert(new WalkableInteger(point), point);
+      } else {
+        var toKeepL1 = getL(lowerBound, point, 0, coverLower.point1Index, false);
+        var toKeepL2 =
+            getR(lowerBound, point, coverLower.point1Index + 1, lowerBound.getSize() - 1, false);
+        lowerBound.deleteRange(
+            new WalkableInteger(toKeepL1.point1).nextVal(),
+            new WalkableInteger(toKeepL2.point1).prevVal());
+        if (toKeepL1.point1.x == point.x) lowerBound.delete(new WalkableInteger(toKeepL1.point1));
+        if (toKeepL2.point1.x == point.x) lowerBound.delete(new WalkableInteger(toKeepL2.point1));
+        lowerBound.insert(new WalkableInteger(point), point);
+      }
     }
-    lowerBound.insert(new WalkableIntegerSecondDown(point), point);
-    upperBound.insert(new WalkableIntegerSecondUp(point), point);
   }
 
   public boolean isInside(Point point) {
