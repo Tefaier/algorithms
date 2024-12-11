@@ -95,34 +95,16 @@ class Line {
   }
 }
 
-class GeometryMethods {
-  public static boolean equalDoubles(double d1, double d2) {
-    return Math.abs(d1 - d2) < 1e-30;
-  }
-
-  public static Point linesIntersection(Line line1, Line line2) {
-    long coeff = line1.xMul * line2.yMul - line2.xMul * line1.yMul;
-    if (coeff == 0) {
-      return null;
-    }
-    return new Point(0, 0);
-  }
-
-  public static Optional<Point> segmentsIntersection(Point p1, Point p2, Point p3, Point p4) {
+class GeoM {
+  public static boolean segmentsIntersection(Point p1, Point p2, Point p3, Point p4) {
     Line line1 = new Line(p1, p1.vectorToPoint(p2));
     Line line2 = new Line(p3, p3.vectorToPoint(p4));
     int posInfo1 = line1.CWLocation(p3) * line1.CWLocation(p4);
     int posInfo2 = line2.CWLocation(p1) * line2.CWLocation(p2);
-    if (posInfo1 == -1 && posInfo2 == -1) {
-      return Optional.of(GeometryMethods.linesIntersection(line1, line2));
+    if (posInfo1 <= 0 && posInfo2 <= 0) {
+      return true;
     }
-    if (posInfo1 == 0 && posInfo2 == -1) {
-      return Optional.of(line1.CWLocation(p3) == 0 ? p3 : p4);
-    }
-    if (posInfo2 == 0 && posInfo1 == -1) {
-      return Optional.of(line2.CWLocation(p1) == 0 ? p1 : p2);
-    }
-    return Optional.empty();
+    return false;
   }
 }
 
@@ -383,13 +365,11 @@ class Hull2D {
       return false;
     }
     boolean cond1 =
-        GeometryMethods.segmentsIntersection(
-                coverLower.point1, coverLower.point2, point, new Point(point.x, -limit))
-            .isPresent();
+        GeoM.segmentsIntersection(
+            coverLower.point1, coverLower.point2, point, new Point(point.x, -limit));
     boolean cond2 =
-        GeometryMethods.segmentsIntersection(
-                coverUpper.point1, coverUpper.point2, point, new Point(point.x, limit))
-            .isPresent();
+        GeoM.segmentsIntersection(
+            coverUpper.point1, coverUpper.point2, point, new Point(point.x, limit));
     return cond1 && cond2;
   }
 
@@ -434,9 +414,8 @@ class Hull2D {
       upperBound.insert(point.x, point);
     } else {
       boolean isAbove =
-          GeometryMethods.segmentsIntersection(
-                  coverLower.point1, coverLower.point2, point, new Point(point.x, -limit))
-              .isPresent();
+          GeoM.segmentsIntersection(
+              coverLower.point1, coverLower.point2, point, new Point(point.x, -limit));
       if (isAbove) {
         var toKeepU1 = getL(upperBound, point, 0, coverUpper.point1Index, true);
         var toKeepU2 =
