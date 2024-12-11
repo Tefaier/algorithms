@@ -7,87 +7,64 @@ import java.util.*;
 public class Main {
   private static final Parser in = new Parser(System.in);
 
-  private static int avoidZero(int value) {
-    return value == 0 ? 1 : value;
+  private static void test() {
+    Random random = new Random();
+    int limit = 10;
+    while (true) {
+      Hull2D hull = new Hull2D();
+      int dotsNumber = random.nextInt(1, 10);
+      List<Point> dots = new ArrayList<>();
+      for (int i = 0; i < dotsNumber; i++) {
+        dots.add(new Point(random.nextInt(-limit, limit), random.nextInt(-limit, limit)));
+        hull.addPoint(dots.get(dots.size() - 1));
+      }
+
+      int requestsNumber = random.nextInt(1, 100);
+      for (int i = 0; i < requestsNumber; i++) {
+        if (random.nextBoolean()) {
+          Line touchLine = new Line(random.nextInt(-limit, limit), random.nextInt(-limit, limit), 0);
+          Point touchPoint = hull.getAngleTouch(touchLine.getAngle());
+          Point trueMax = null;
+          long countedMax1 = Long.MIN_VALUE;
+          for (Point dot : dots) {
+            if (countedMax1 < touchLine.xMul * dot.x + touchLine.yMul * dot.y) {
+              countedMax1 = Math.round(touchLine.xMul * dot.x + touchLine.yMul * dot.y);
+              trueMax = dot;
+            }
+          }
+          long countedMax2 = Math.round(touchLine.applyPoint(touchPoint));
+          if (countedMax1 != countedMax2) {
+            System.out.println("ERROR");
+          }
+        } else {
+          dots.add(new Point(random.nextInt(-limit, limit), random.nextInt(-limit, limit)));
+          hull.addPoint(dots.get(dots.size() - 1));
+        }
+      }
+    }
   }
 
   public static void main(String[] args) {
-
+    // test();
+    Hull2D hull = new Hull2D();
     int dotsNumber = in.nextInt();
-    Point[] dots = new Point[dotsNumber];
     for (int i = 0; i < dotsNumber; i++) {
-      dots[i] = new Point(in.nextInt(), in.nextInt());
+      hull.addPoint(new Point(in.nextInt(), in.nextInt()));
     }
-    NavigableSet<Point> sortByDistance =
-        new TreeSet<>(
-            (point1, point2) ->
-                avoidZero(Double.compare(point1.magnitude2(), point2.magnitude2())));
-    sortByDistance.addAll(Arrays.stream(dots).toList());
 
     int requestsNumber = in.nextInt();
     StringBuilder answer = new StringBuilder();
     for (int i = 0; i < requestsNumber; i++) {
       String method = in.nextString(4);
       if (method.equals("get")) {
-        int a = in.nextInt();
-        int b = in.nextInt();
-        long countedMax = Long.MIN_VALUE;
-        double lastDistance2 = 0.0;
-        for (Iterator<Point> it = sortByDistance.descendingIterator(); it.hasNext(); ) {
-          Point point = it.next();
-          Line line = new Line(point, a, b);
-          long val = Math.round(a * point.x + b * point.y);
-          if (val > countedMax) {
-            countedMax = val;
-            lastDistance2 = GeometryMethods.distancePointToLine2(GeometryMethods.originPoint, line);
-          }
-          if (point.magnitude2() < lastDistance2) {
-            break;
-          }
-        }
-        answer.append(countedMax).append('\n');
+        Line touchLine = new Line(in.nextInt(), in.nextInt(), 0);
+        Point touchPoint = hull.getAngleTouch(touchLine.getAngle());
+        answer.append(Math.round(touchLine.applyPoint(touchPoint))).append('\n');
       } else {
-        sortByDistance.add(new Point(in.nextInt(), in.nextInt()));
+        hull.addPoint(new Point(in.nextInt(), in.nextInt()));
       }
     }
     System.out.println(answer);
-  }
-}
-
-class GeometryMethods {
-  public static Point originPoint = new Point(0, 0);
-
-  public static boolean equalDoubles(double d1, double d2) {
-    return Math.abs(d1 - d2) < 1e-6;
-  }
-
-  public static double distancePointToLine2(Point point, Line line) {
-    return Math.pow(line.applyPoint(point), 2.0)
-        / (Math.pow(line.xMul, 2.0) + Math.pow(line.yMul, 2.0));
-  }
-
-  // cross product CW from vector 1 to vector 2
-  public static double crossProduct(Vector vector1, Vector vector2) {
-    return vector1.x * vector2.y - vector1.y * vector2.x;
-  }
-
-  public static double mapTangentTo2pi(double angle, double x) {
-    if (angle >= 0 && x >= 0) {
-      return angle;
-    } else if (x < 0) {
-      return Math.PI + angle;
-    } else if (angle < 0 && x >= 0) {
-      return 2 * Math.PI + angle;
-    }
-    return 0;
-  }
-
-  public static Point linesIntersection(Line line1, Line line2) {
-    var coeff = line1.xMul * line2.yMul - line2.xMul * line1.yMul;
-    if (equalDoubles(coeff, 0.0)) {
-      return null;
-    }
-    return new Point((line1.yMul * line2.c - line2.yMul * line1.c) / coeff, (line1.c * line2.xMul - line2.c * line1.xMul) / coeff);
   }
 }
 
@@ -112,10 +89,6 @@ class Point {
   public Point(double x, double y) {
     this.x = x;
     this.y = y;
-  }
-
-  public double magnitude2() {
-    return x * x + y * y;
   }
 
   public Vector vectorToPoint(Point otherPoint) {
@@ -167,39 +140,148 @@ class Line {
   }
 }
 
+class GeometryMethods {
+  public static Point originPoint = new Point(0, 0);
+  public static Double calculationBoundingBox = (double) Long.MAX_VALUE;
+  public static Line boxD = new Line(0, 1, calculationBoundingBox);
+  public static Line boxU = new Line(0, -1, calculationBoundingBox);
+  public static Line boxR = new Line(-1, 0, calculationBoundingBox);
+  public static Line boxL = new Line(1, 0, calculationBoundingBox);
+
+  public static boolean equalDoubles(double d1, double d2) {
+    return Math.abs(d1 - d2) < 1e-30;
+  }
+
+  public static double dotProduct(Vector vector1, Vector vector2) {
+    return vector1.x * vector2.x + vector1.y * vector2.y;
+  }
+
+  // cross product CW from vector 1 to vector 2
+  public static double crossProduct(Vector vector1, Vector vector2) {
+    return vector1.x * vector2.y - vector1.y * vector2.x;
+  }
+
+  public static Point linesIntersection(Line line1, Line line2) {
+    var coeff = line1.xMul * line2.yMul - line2.xMul * line1.yMul;
+    if (equalDoubles(coeff, 0.0)) {
+      return null;
+    }
+    return new Point(
+        (line1.yMul * line2.c - line2.yMul * line1.c) / coeff,
+        (line1.c * line2.xMul - line2.c * line1.xMul) / coeff);
+  }
+
+  public static Optional<Point> segmentsIntersection(Point p1, Point p2, Point p3, Point p4) {
+    Line line1 = new Line(p1, p1.vectorToPoint(p2));
+    Line line2 = new Line(p3, p3.vectorToPoint(p4));
+    int posInfo1 = line1.CWLocation(p3) * line1.CWLocation(p4);
+    int posInfo2 = line2.CWLocation(p1) * line2.CWLocation(p2);
+    if (posInfo1 == -1 && posInfo2 == -1) {
+      return Optional.of(GeometryMethods.linesIntersection(line1, line2));
+    }
+    if (posInfo1 == 0 && posInfo2 == -1) {
+      return Optional.of(line1.CWLocation(p3) == 0 ? p3 : p4);
+    }
+    if (posInfo2 == 0 && posInfo1 == -1) {
+      return Optional.of(line2.CWLocation(p1) == 0 ? p1 : p2);
+    }
+    return Optional.empty();
+  }
+}
+
 interface WalkableKey<T> extends Comparable<WalkableKey<T>> {
   public T getVal();
+
+  public T getStrictOrderVal();
 
   public WalkableKey<T> prevVal();
 
   public WalkableKey<T> nextVal();
 }
 
-class WalkableLong implements WalkableKey<Long> {
-  public long val;
+class WalkableIntegerSecondUp implements WalkableKey<Integer> {
+  public int val;
+  protected int priority;
 
-  public WalkableLong(long val) {
+  public WalkableIntegerSecondUp(Point point) {
+    this((int) Math.round(point.x), (int) Math.round(point.y));
+  }
+
+  public WalkableIntegerSecondUp(int val, int priority) {
     this.val = val;
+    this.priority = priority;
   }
 
   @Override
-  public Long getVal() {
+  public Integer getVal() {
     return val;
   }
 
   @Override
-  public WalkableLong prevVal() {
-    return new WalkableLong(val - 1);
+  public Integer getStrictOrderVal() {
+    return priority;
   }
 
   @Override
-  public WalkableLong nextVal() {
-    return new WalkableLong(val + 1);
+  public WalkableIntegerSecondUp prevVal() {
+    return new WalkableIntegerSecondUp(
+        val == Integer.MIN_VALUE ? Integer.MIN_VALUE : val - 1, Integer.MAX_VALUE);
   }
 
   @Override
-  public int compareTo(WalkableKey<Long> o) {
-    return Long.compare(val, o.getVal());
+  public WalkableIntegerSecondUp nextVal() {
+    return new WalkableIntegerSecondUp(
+        val == Integer.MAX_VALUE ? Integer.MAX_VALUE : val + 1, Integer.MIN_VALUE);
+  }
+
+  @Override
+  public int compareTo(WalkableKey<Integer> o) {
+    return val == o.getVal()
+        ? Integer.compare(priority, o.getStrictOrderVal())
+        : Integer.compare(val, o.getVal());
+  }
+}
+
+class WalkableIntegerSecondDown implements WalkableKey<Integer> {
+  public int val;
+  protected int priority;
+
+  public WalkableIntegerSecondDown(Point point) {
+    this((int) Math.round(point.x), (int) Math.round(point.y));
+  }
+
+  public WalkableIntegerSecondDown(int val, int priority) {
+    this.val = val;
+    this.priority = priority;
+  }
+
+  @Override
+  public Integer getVal() {
+    return val;
+  }
+
+  @Override
+  public Integer getStrictOrderVal() {
+    return priority;
+  }
+
+  @Override
+  public WalkableIntegerSecondDown prevVal() {
+    return new WalkableIntegerSecondDown(
+        val == Integer.MIN_VALUE ? Integer.MIN_VALUE : val - 1, Integer.MIN_VALUE);
+  }
+
+  @Override
+  public WalkableIntegerSecondDown nextVal() {
+    return new WalkableIntegerSecondDown(
+        val == Integer.MAX_VALUE ? Integer.MAX_VALUE : val + 1, Integer.MAX_VALUE);
+  }
+
+  @Override
+  public int compareTo(WalkableKey<Integer> o) {
+    return val == o.getVal()
+        ? Integer.compare(o.getStrictOrderVal(), priority)
+        : Integer.compare(val, o.getVal());
   }
 }
 
@@ -286,6 +368,10 @@ class DecTree<K, L> {
     }
   }
 
+  public int getSize() {
+    return getSize(root);
+  }
+
   private int getSize(Node node) {
     return node == null ? 0 : node.size;
   }
@@ -325,6 +411,14 @@ class DecTree<K, L> {
     root = merge(leftPair.first, pair.second);
   }
 
+  // delete by range of values, inclusive
+  public void deleteRange(WalkableKey<K> valueFrom, WalkableKey<K> valueTo) {
+    Pair pair = split(root, valueTo);
+    Pair leftPair = split(pair.first, valueFrom.prevVal());
+    root = merge(leftPair.first, pair.second);
+    size -= leftPair.second == null ? 0 : leftPair.second.size;
+  }
+
   // excludes the value itself
   // depending on bigger will search next bigger or next smaller
   public WalkableKey<K> getNext(WalkableKey<K> value, boolean bigger) {
@@ -343,7 +437,7 @@ class DecTree<K, L> {
     }
   }
 
-  public WalkableKey<K> getKth(int k) {
+  public L getKth(int k) {
     if (size <= k || k < 0) {
       return null;
     }
@@ -352,7 +446,7 @@ class DecTree<K, L> {
     while (tmp != null) {
       int index = toAdd + getSize(tmp.left);
       if (index == k) {
-        return tmp.value;
+        return tmp.load;
       } else if (index < k) {
         toAdd = index + 1;
         tmp = tmp.right;
@@ -365,6 +459,191 @@ class DecTree<K, L> {
 }
 
 class Hull2D {
+  record BinarySearchResult(int point1Index, Point point1, Point point2) {
+  }
+
+  DecTree<Integer, Point> upperBound = new DecTree<>();
+  DecTree<Integer, Point> lowerBound = new DecTree<>();
+
+  private BinarySearchResult getCoverSegment(DecTree<Integer, Point> bound, double x) {
+    int l = 0;
+    int r = bound.getSize();
+    while (r - l > 1) {
+      int m = (l + r) / 2;
+      if (bound.getKth(m).x >= x) {
+        r = m;
+      } else {
+        l = m;
+      }
+    }
+    if (l == 0) {
+      Point p0 = bound.getKth(0);
+      if (p0.x > x) {
+        return new BinarySearchResult(-1, null, null);
+      }
+      return new BinarySearchResult(0, p0, bound.getKth(1));
+    }
+    if (l == bound.getSize() - 1) {
+      return new BinarySearchResult(bound.getSize(), null, null);
+    }
+    return new BinarySearchResult(l, bound.getKth(l), bound.getKth(l + 1));
+  }
+
+  // git inclusive range where to search for break point
+  private BinarySearchResult getL(
+      DecTree<Integer, Point> bound, Point point, int l, int r, boolean upper) {
+    if (r - l <= 1) {
+      if (r == l) return new BinarySearchResult(l, bound.getKth(l), null);
+      Point l1 = bound.getKth(l);
+      Point l2 = bound.getKth(l + 1);
+      Line segmentLine = new Line(l1, l1.vectorToPoint(l2));
+      int location = segmentLine.CWLocation(point);
+      if (upper ? location >= 0 : location <= 0) return new BinarySearchResult(l, l1, l2);
+      return new BinarySearchResult(r, l2, null);
+    }
+    int m = (l + r) / 2;
+    Point m1 = bound.getKth(m);
+    Point m2 = bound.getKth(m + 1);
+    Line segmentLine = new Line(m1, m1.vectorToPoint(m2));
+    int location = segmentLine.CWLocation(point);
+    if (location == 0) {
+      return new BinarySearchResult(m, m1, m2);
+    } else if (upper ? location < 0 : location > 0) {
+      return getL(bound, point, m, r, upper);
+    } else {
+      return getL(bound, point, l, m, upper);
+    }
+  }
+
+  // git inclusive range where to search for break point
+  private BinarySearchResult getR(
+      DecTree<Integer, Point> bound, Point point, int l, int r, boolean upper) {
+    if (r - l <= 1) {
+      if (r == l) return new BinarySearchResult(l, bound.getKth(l), null);
+      Point r1 = bound.getKth(r - 1);
+      Point r2 = bound.getKth(r);
+      Line segmentLine = new Line(r1, r1.vectorToPoint(r2));
+      int location = segmentLine.CWLocation(point);
+      if (upper ? location >= 0 : location <= 0) return new BinarySearchResult(r, r2, null);
+      return new BinarySearchResult(l, r1, r2);
+    }
+    int m = (l + r) / 2;
+    Point m1 = bound.getKth(m - 1);
+    Point m2 = bound.getKth(m);
+    Line segmentLine = new Line(m1, m1.vectorToPoint(m2));
+    int location = segmentLine.CWLocation(point);
+    if (location == 0) {
+      return new BinarySearchResult(m, m2, null);
+    } else if (upper ? location >= 0 : location <= 0) {
+      return getR(bound, point, m, r, upper);
+    } else {
+      return getR(bound, point, l, m, upper);
+    }
+  }
+
+  public void addPoint(Point point) {
+    if (lowerBound.getSize() == 0) {
+      lowerBound.insert(new WalkableIntegerSecondDown(point), point);
+      upperBound.insert(new WalkableIntegerSecondUp(point), point);
+      return;
+    }
+    if (isInside(point)) return;
+    if (lowerBound.getSize() == 1) {
+      lowerBound.insert(new WalkableIntegerSecondDown(point), point);
+      upperBound.insert(new WalkableIntegerSecondUp(point), point);
+      return;
+    }
+    var coverLower = getCoverSegment(lowerBound, point.x);
+    var coverUpper = getCoverSegment(upperBound, point.x);
+    if (coverLower.point1Index == -1) {
+      var toKeepL = getR(lowerBound, point, 0, lowerBound.getSize() - 1, false);
+      var toKeepU = getR(upperBound, point, 0, upperBound.getSize() - 1, true);
+      lowerBound.deleteRange(
+          new WalkableIntegerSecondDown(Integer.MIN_VALUE, 0),
+          new WalkableIntegerSecondDown(toKeepL.point1).prevVal());
+      upperBound.deleteRange(
+          new WalkableIntegerSecondUp(Integer.MIN_VALUE, 0),
+          new WalkableIntegerSecondUp(toKeepU.point1).prevVal());
+    } else if (coverLower.point1Index == lowerBound.getSize()) {
+      var toKeepL = getL(lowerBound, point, 0, lowerBound.getSize() - 1, false);
+      var toKeepU = getL(upperBound, point, 0, upperBound.getSize() - 1, true);
+      lowerBound.deleteRange(
+          new WalkableIntegerSecondDown(toKeepL.point1).nextVal(),
+          new WalkableIntegerSecondDown(Integer.MAX_VALUE, 0));
+      upperBound.deleteRange(
+          new WalkableIntegerSecondUp(toKeepU.point1).nextVal(),
+          new WalkableIntegerSecondUp(Integer.MAX_VALUE, 0));
+    } else {
+      var toKeepL1 = getL(lowerBound, point, 0, coverLower.point1Index, false);
+      var toKeepL2 =
+          getR(lowerBound, point, coverLower.point1Index + 1, lowerBound.getSize() - 1, false);
+      var toKeepU1 = getL(upperBound, point, 0, coverUpper.point1Index, true);
+      var toKeepU2 =
+          getR(upperBound, point, coverUpper.point1Index + 1, upperBound.getSize() - 1, true);
+      lowerBound.deleteRange(
+          new WalkableIntegerSecondDown(toKeepL1.point1).nextVal(),
+          new WalkableIntegerSecondDown(toKeepL2.point1).prevVal());
+      upperBound.deleteRange(
+          new WalkableIntegerSecondUp(toKeepU1.point1).nextVal(),
+          new WalkableIntegerSecondUp(toKeepU2.point1).prevVal());
+    }
+    lowerBound.insert(new WalkableIntegerSecondDown(point), point);
+    upperBound.insert(new WalkableIntegerSecondUp(point), point);
+  }
+
+  public boolean isInside(Point point) {
+    if (lowerBound.getSize() == 0) return false;
+    if (lowerBound.getSize() == 1)
+      return GeometryMethods.equalDoubles(
+          lowerBound.getKth(0).vectorToPoint(point).magnitude2(), 0.0);
+    var coverLower = getCoverSegment(lowerBound, point.x);
+    var coverUpper = getCoverSegment(upperBound, point.x);
+    if (coverLower.point1Index == -1 || coverLower.point1Index == lowerBound.getSize()) {
+      return false;
+    }
+    boolean cond1 =
+        GeometryMethods.segmentsIntersection(
+                coverLower.point1, coverLower.point2, point, new Point(point.x, Integer.MIN_VALUE))
+            .isPresent();
+    boolean cond2 =
+        GeometryMethods.segmentsIntersection(
+                coverUpper.point1, coverUpper.point2, point, new Point(point.x, Integer.MAX_VALUE))
+            .isPresent();
+    return cond1 && cond2;
+  }
+
+  private BinarySearchResult searchTouchVertex(
+      DecTree<Integer, Point> bound, double angle, boolean upper) {
+    int l = 0;
+    int r = bound.getSize();
+    while (r - l > 1) {
+      int m = (l + r) / 2;
+      Point mPoint = bound.getKth(m);
+      Point from = bound.getKth(m - 1);
+      double angleBreak =
+          upper
+              ? new Line(from, from.vectorToPoint(mPoint)).getAngle()
+              : new Line(mPoint, mPoint.vectorToPoint(from)).getAngle();
+      if (upper
+          ? angle > angleBreak
+          : (angleBreak > 0
+          ? (angle < angleBreak && angle > 0)
+          : (angle > 0 || angle < angleBreak))) {
+        r = m;
+      } else {
+        l = m;
+      }
+    }
+    return new BinarySearchResult(l, bound.getKth(l), null);
+  }
+
+  public Point getAngleTouch(double angle) {
+    if (angle >= Math.PI / -2 && angle <= Math.PI / 2) {
+      return searchTouchVertex(upperBound, angle, true).point1;
+    } else {
+      return searchTouchVertex(lowerBound, angle, false).point1;
+    }
+  }
 }
 
 // https://habr.com/ru/articles/91283/

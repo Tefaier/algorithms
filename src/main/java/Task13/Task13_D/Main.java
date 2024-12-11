@@ -294,10 +294,10 @@ class GeometryMethods {
     if (posInfo1 == -1 && posInfo2 == -1) {
       return Optional.of(GeometryMethods.linesIntersection(line1, line2));
     }
-    if (posInfo1 == 0) {
+    if (posInfo1 == 0 && posInfo2 == -1) {
       return Optional.of(line1.CWLocation(p3) == 0 ? p3 : p4);
     }
-    if (posInfo2 == 0) {
+    if (posInfo2 == 0 && posInfo1 == -1) {
       return Optional.of(line2.CWLocation(p1) == 0 ? p1 : p2);
     }
     return Optional.empty();
