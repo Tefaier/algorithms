@@ -106,6 +106,70 @@ class GeoM {
     }
     return false;
   }
+
+  public static long crossProduct(Vector vector1, Vector vector2) {
+    return vector1.x * vector2.y - vector1.y * vector2.x;
+  }
+
+  public static List<Point> buildConvexHull(Point[] points) {
+    List<Point> conv = new ArrayList<>();
+    // outlier outcomes
+    if (points.length == 1) {
+      conv.add(points[0]);
+      return conv;
+    }
+    if (points.length == 2) {
+      conv.add(points[0]);
+      conv.add(points[1]);
+      return conv;
+    }
+
+    // get bottom -> right
+    int s = 0;
+    for (int i = 1; i < points.length; i++) {
+      if (points[i].y < points[s].y || (points[i].y == points[s].y && points[i].x > points[s].x)) {
+        s = i;
+      }
+    }
+    conv.add(points[s]);
+    points[s] = points[0];
+    points[0] = conv.get(0);
+
+    // sort
+    Point point0 = points[0];
+    Arrays.sort(points, (p1, p2) -> {
+      if (p1 == point0) return -1;
+      if (p2 == point0) return 1;
+      Vector vec1 = point0.vectorToPoint(p1);
+      Vector vec2 = point0.vectorToPoint(p2);
+      long result = crossProduct(vec1, vec1);
+      if (result != 0) return result > 0 ? 1 : -1;
+      return Long.compare(vec1.magnitude2(), vec2.magnitude2());
+    });
+
+    // get second conv point
+    int target = 1;
+    while ((target < points.length - 1) && vect(points[0], points[target + 1], points[0], points[1]) == 0) {
+      target++;
+    }
+    conv.add(points[target]);
+    if (target < points.length - 1) {
+      conv.add(points[target + 1]);
+    }
+
+    // go through other
+    for (int i = target + 2; i < points.length; i++) {
+      while (vect(conv.get(conv.size() - 2), conv.get(conv.size() - 1), conv.get(conv.size() - 1), points[i]) <= 0) {
+        conv.remove(conv.size() - 1);
+        if (conv.size() == 1) {
+          break;
+        }
+      }
+      conv.add(points[i]);
+    }
+
+    return conv;
+  }
 }
 
 class DecTree {
