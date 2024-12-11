@@ -21,11 +21,7 @@ public class Main {
       if (method.equals("get")) {
         Line touchLine = new Line(in.nextInt(), in.nextInt(), 0);
         Point touchPoint = hull.getAngleTouch(touchLine.getAngle());
-        answer
-            .append(
-                (long) touchLine.xMul * (long) touchPoint.x
-                    + (long) touchLine.yMul * (long) touchPoint.y)
-            .append('\n');
+        answer.append(touchLine.applyPoint(touchPoint)).append('\n');
       } else {
         hull.addPoint(new Point(in.nextInt(), in.nextInt()));
       }
@@ -35,24 +31,24 @@ public class Main {
 }
 
 class Vector {
-  final int x;
-  final int y;
+  final long x;
+  final long y;
 
-  public Vector(int x, int y) {
+  public Vector(long x, long y) {
     this.x = x;
     this.y = y;
   }
 
   public long magnitude2() {
-    return (long) x * x + (long) y * y;
+    return x * x + y * y;
   }
 }
 
 class Point {
-  final int x;
-  final int y;
+  final long x;
+  final long y;
 
-  public Point(int x, int y) {
+  public Point(long x, long y) {
     this.x = x;
     this.y = y;
   }
@@ -63,20 +59,20 @@ class Point {
 }
 
 class Line {
-  final int xMul;
-  final int yMul;
-  final int c;
+  final long xMul;
+  final long yMul;
+  final long c;
   final Vector lineVector;
 
   public Line(Point through, Vector with) {
     this(through, -with.y, with.x);
   }
 
-  public Line(Point through, int xMul, int yMul) {
+  public Line(Point through, long xMul, long yMul) {
     this(xMul, yMul, -(xMul * through.x + yMul * through.y));
   }
 
-  public Line(int xMul, int yMul, int c) {
+  public Line(long xMul, long yMul, long c) {
     this.xMul = xMul;
     this.yMul = yMul;
     this.c = c;
@@ -84,7 +80,7 @@ class Line {
   }
 
   public long applyPoint(Point point) {
-    return (long) xMul * point.x + (long) yMul * point.y + c;
+    return xMul * point.x + yMul * point.y + c;
   }
 
   // if rotation from line vector towards point is clock-wise
@@ -105,7 +101,7 @@ class GeometryMethods {
   }
 
   public static Point linesIntersection(Line line1, Line line2) {
-    long coeff = (long) line1.xMul * line2.yMul - (long) line2.xMul * line1.yMul;
+    long coeff = line1.xMul * line2.yMul - line2.xMul * line1.yMul;
     if (coeff == 0) {
       return null;
     }
@@ -137,14 +133,14 @@ class DecTree {
   private int size = 0;
 
   private class Node {
-    Integer value;
+    Long value;
     Point load;
     public Node left = null;
     public Node right = null;
     public int size = 0;
     private final long priority;
 
-    public Node(Integer value, Point load) {
+    public Node(Long value, Point load) {
       this.value = value;
       this.load = load;
       this.priority = random.nextLong();
@@ -152,8 +148,8 @@ class DecTree {
   }
 
   private class Pair {
-    Node first;
-    Node second;
+    Node first = null;
+    Node second = null;
 
     public Pair(Node first, Node second) {
       this.first = first;
@@ -161,7 +157,7 @@ class DecTree {
     }
   }
 
-  private Pair split(Node node, Integer key) {
+  private Pair split(Node node, Long key) {
     if (node == null) {
       return new Pair(null, null);
     }
@@ -170,7 +166,7 @@ class DecTree {
     // works by value (as a search tree)
     // left - <=
     // right - >
-    if (node.value.compareTo(key) > 0) {
+    if (node.value > key) {
       Pair pair = split(node.left, key);
       node.left = pair.second;
       updateSize(pair.first);
@@ -221,7 +217,7 @@ class DecTree {
     return node == null ? 0 : node.size;
   }
 
-  public void insert(Integer value, Point load) {
+  public void insert(Long value, Point load) {
     if (find(value)) {
       Node tmp = root;
       while (tmp != null) {
@@ -242,7 +238,7 @@ class DecTree {
     root = merge(merge(pair.first, node), pair.second);
   }
 
-  public boolean find(Integer value) {
+  public boolean find(Long value) {
     Node tmp = root;
     while (tmp != null) {
       if (tmp.value.equals(value)) {
@@ -257,7 +253,7 @@ class DecTree {
     return false;
   }
 
-  public void delete(Integer value) {
+  public void delete(Long value) {
     if (!find(value)) {
       return;
     }
@@ -268,9 +264,9 @@ class DecTree {
   }
 
   // delete by range of values, inclusive
-  public void deleteRange(Integer valueFrom, Integer valueTo) {
+  public void deleteRange(Long valueFrom, Long valueTo) {
     Pair pair = split(root, valueTo);
-    Pair leftPair = split(pair.first, valueFrom + 1);
+    Pair leftPair = split(pair.first, valueFrom - 1);
     root = merge(leftPair.first, pair.second);
     size -= leftPair.second == null ? 0 : leftPair.second.size;
   }
@@ -297,7 +293,7 @@ class DecTree {
 }
 
 class Hull2D {
-  private static final int limit = 1500000000;
+  private static final long limit = 1500000000;
 
   record BinarySearchResult(int point1Index, Point point1, Point point2) {
   }
@@ -305,7 +301,7 @@ class Hull2D {
   DecTree upperBound = new DecTree();
   DecTree lowerBound = new DecTree();
 
-  private BinarySearchResult getCoverSegment(DecTree bound, double x) {
+  private BinarySearchResult getCoverSegment(DecTree bound, Long x) {
     int l = 0;
     int r = bound.getSize();
     while (r - l > 1) {
@@ -346,16 +342,14 @@ class Hull2D {
     int location = segmentLine.CWLocation(point);
     if (location == 0) {
       return m1;
-    } else if (upper ^ (location > 0)) {
+    } else if (upper ? location < 0 : location > 0) {
       return getL(bound, point, m, r, upper);
     } else {
       return getL(bound, point, l, m, upper);
     }
   }
 
-  // git inclusive range where to search for break point
-  private Point getR(
-      DecTree bound, Point point, int l, int r, boolean upper) {
+  private Point getR(DecTree bound, Point point, int l, int r, boolean upper) {
     if (r - l <= 1) {
       if (r == l) return bound.getKth(l);
       Point r1 = bound.getKth(r - 1);
@@ -372,11 +366,31 @@ class Hull2D {
     int location = segmentLine.CWLocation(point);
     if (location == 0) {
       return m2;
-    } else if (upper ^ location < 0) {
+    } else if (upper ? location >= 0 : location <= 0) {
       return getR(bound, point, m, r, upper);
     } else {
       return getR(bound, point, l, m, upper);
     }
+  }
+
+  public boolean isInside(Point point) {
+    if (lowerBound.getSize() == 0) return false;
+    if (lowerBound.getSize() == 1)
+      return lowerBound.getKth(0).vectorToPoint(point).magnitude2() == 0;
+    var coverLower = getCoverSegment(lowerBound, point.x);
+    var coverUpper = getCoverSegment(upperBound, point.x);
+    if (coverLower.point1Index == -1 || coverLower.point1Index == lowerBound.getSize()) {
+      return false;
+    }
+    boolean cond1 =
+        GeometryMethods.segmentsIntersection(
+                coverLower.point1, coverLower.point2, point, new Point(point.x, -limit))
+            .isPresent();
+    boolean cond2 =
+        GeometryMethods.segmentsIntersection(
+                coverUpper.point1, coverUpper.point2, point, new Point(point.x, limit))
+            .isPresent();
+    return cond1 && cond2;
   }
 
   public void addPoint(Point point) {
@@ -400,35 +414,34 @@ class Hull2D {
       return;
     }
 
+    if (isInside(point)) return;
+
     var coverLower = getCoverSegment(lowerBound, point.x);
     var coverUpper = getCoverSegment(upperBound, point.x);
     if (coverLower.point1Index == -1) {
       var toKeepL = getR(lowerBound, point, 0, lowerBound.getSize() - 1, false);
       var toKeepU = getR(upperBound, point, 0, upperBound.getSize() - 1, true);
-      lowerBound.deleteRange(-limit, toKeepL.x + 1);
-      upperBound.deleteRange(-limit, toKeepU.x + 1);
+      lowerBound.deleteRange(-limit, toKeepL.x - 1);
+      upperBound.deleteRange(-limit, toKeepU.x - 1);
       lowerBound.insert(point.x, point);
       upperBound.insert(point.x, point);
     } else if (coverLower.point1Index == lowerBound.getSize()) {
       var toKeepL = getL(lowerBound, point, 0, lowerBound.getSize() - 1, false);
       var toKeepU = getL(upperBound, point, 0, upperBound.getSize() - 1, true);
-      lowerBound.deleteRange(toKeepL.x, limit);
-      upperBound.deleteRange(toKeepU.x, limit);
+      lowerBound.deleteRange(toKeepL.x + 1, limit);
+      upperBound.deleteRange(toKeepU.x + 1, limit);
       lowerBound.insert(point.x, point);
       upperBound.insert(point.x, point);
     } else {
       boolean isAbove =
           GeometryMethods.segmentsIntersection(
-                  coverLower.point1,
-                  coverLower.point2,
-                  point,
-                  new Point(point.x, -limit))
+                  coverLower.point1, coverLower.point2, point, new Point(point.x, -limit))
               .isPresent();
       if (isAbove) {
         var toKeepU1 = getL(upperBound, point, 0, coverUpper.point1Index, true);
         var toKeepU2 =
             getR(upperBound, point, coverUpper.point1Index + 1, upperBound.getSize() - 1, true);
-        upperBound.deleteRange(toKeepU1.x + 1, toKeepU2.x + 1);
+        upperBound.deleteRange(toKeepU1.x + 1, toKeepU2.x - 1);
         if (toKeepU1.x == point.x) upperBound.delete(toKeepU1.x);
         if (toKeepU2.x == point.x) upperBound.delete(toKeepU2.x);
         upperBound.insert(point.x, point);
@@ -444,25 +457,6 @@ class Hull2D {
     }
   }
 
-  public boolean isInside(Point point) {
-    if (lowerBound.getSize() == 0) return false;
-    if (lowerBound.getSize() == 1) return lowerBound.getKth(0).vectorToPoint(point).magnitude2() == 0;
-    var coverLower = getCoverSegment(lowerBound, point.x);
-    var coverUpper = getCoverSegment(upperBound, point.x);
-    if (coverLower.point1Index == -1 || coverLower.point1Index == lowerBound.getSize()) {
-      return false;
-    }
-    boolean cond1 =
-        GeometryMethods.segmentsIntersection(
-                coverLower.point1, coverLower.point2, point, new Point(point.x, -limit))
-            .isPresent();
-    boolean cond2 =
-        GeometryMethods.segmentsIntersection(
-                coverUpper.point1, coverUpper.point2, point, new Point(point.x, limit))
-            .isPresent();
-    return cond1 && cond2;
-  }
-
   private Point searchTouchVertex(DecTree bound, double angle, boolean upper) {
     int l = 0;
     int r = bound.getSize();
@@ -474,18 +468,14 @@ class Hull2D {
           upper
               ? new Line(from, from.vectorToPoint(mPoint)).getAngle()
               : new Line(mPoint, mPoint.vectorToPoint(from)).getAngle();
-      if (upper) {
-        if (angle > angleBreak) {
-          r = m;
-        } else {
-          l = m;
-        }
+      if (upper
+          ? angle > angleBreak
+          : (angleBreak > 0
+          ? (angle < angleBreak && angle > 0)
+          : (angle > 0 || angle < angleBreak))) {
+        r = m;
       } else {
-        if ((angleBreak > 0 ? (angle < angleBreak && angle > 0) : (angle > 0 || angle < angleBreak))) {
-          r = m;
-        } else {
-          l = m;
-        }
+        l = m;
       }
     }
     return bound.getKth(l);
