@@ -35,24 +35,24 @@ public class Main {
 }
 
 class Vector {
-  final double x;
-  final double y;
+  final int x;
+  final int y;
 
-  public Vector(double x, double y) {
+  public Vector(int x, int y) {
     this.x = x;
     this.y = y;
   }
 
-  public double magnitude2() {
-    return x * x + y * y;
+  public long magnitude2() {
+    return (long) x * x + (long) y * y;
   }
 }
 
 class Point {
-  final double x;
-  final double y;
+  final int x;
+  final int y;
 
-  public Point(double x, double y) {
+  public Point(int x, int y) {
     this.x = x;
     this.y = y;
   }
@@ -63,42 +63,35 @@ class Point {
 }
 
 class Line {
-  final double xMul;
-  final double yMul;
-  final double c;
+  final int xMul;
+  final int yMul;
+  final int c;
   final Vector lineVector;
 
   public Line(Point through, Vector with) {
     this(through, -with.y, with.x);
   }
 
-  public Line(Point through, double xMul, double yMul) {
+  public Line(Point through, int xMul, int yMul) {
     this(xMul, yMul, -(xMul * through.x + yMul * through.y));
   }
 
-  public Line(double xMul, double yMul, double c) {
+  public Line(int xMul, int yMul, int c) {
     this.xMul = xMul;
     this.yMul = yMul;
     this.c = c;
     this.lineVector = new Vector(yMul, -xMul);
   }
 
-  public double applyPoint(Point point) {
-    return xMul * point.x + yMul * point.y + c;
+  public long applyPoint(Point point) {
+    return (long) xMul * point.x + (long) yMul * point.y + c;
   }
 
   // if rotation from line vector towards point is clock-wise
   // towards positive c of the line
   public int CWLocation(Point point) {
     var appliedValue = applyPoint(point);
-    return GeometryMethods.equalDoubles(appliedValue, 0.0) ? 0 : (appliedValue > 0 ? 1 : -1);
-  }
-
-  public Point getSamplePoint() {
-    if (xMul == 0) {
-      return new Point(0, -c / yMul);
-    }
-    return new Point(-c / xMul, 0);
+    return appliedValue == 0 ? 0 : (appliedValue > 0 ? 1 : -1);
   }
 
   public double getAngle() {
@@ -107,34 +100,16 @@ class Line {
 }
 
 class GeometryMethods {
-  public static Point originPoint = new Point(0, 0);
-  public static Double calculationBoundingBox = (double) Long.MAX_VALUE;
-  public static Line boxD = new Line(0, 1, calculationBoundingBox);
-  public static Line boxU = new Line(0, -1, calculationBoundingBox);
-  public static Line boxR = new Line(-1, 0, calculationBoundingBox);
-  public static Line boxL = new Line(1, 0, calculationBoundingBox);
-
   public static boolean equalDoubles(double d1, double d2) {
     return Math.abs(d1 - d2) < 1e-30;
   }
 
-  public static double dotProduct(Vector vector1, Vector vector2) {
-    return vector1.x * vector2.x + vector1.y * vector2.y;
-  }
-
-  // cross product CW from vector 1 to vector 2
-  public static double crossProduct(Vector vector1, Vector vector2) {
-    return vector1.x * vector2.y - vector1.y * vector2.x;
-  }
-
   public static Point linesIntersection(Line line1, Line line2) {
-    var coeff = line1.xMul * line2.yMul - line2.xMul * line1.yMul;
-    if (equalDoubles(coeff, 0.0)) {
+    long coeff = (long) line1.xMul * line2.yMul - (long) line2.xMul * line1.yMul;
+    if (coeff == 0) {
       return null;
     }
-    return new Point(
-        (line1.yMul * line2.c - line2.yMul * line1.c) / coeff,
-        (line1.c * line2.xMul - line2.c * line1.xMul) / coeff);
+    return new Point(0, 0);
   }
 
   public static Optional<Point> segmentsIntersection(Point p1, Point p2, Point p3, Point p4) {
@@ -155,74 +130,21 @@ class GeometryMethods {
   }
 }
 
-interface WalkableKey<T> extends Comparable<WalkableKey<T>> {
-  public T getVal();
-
-  public WalkableKey<T> prevVal();
-
-  public WalkableKey<T> nextVal();
-}
-
-class WalkableInteger implements WalkableKey<Integer> {
-  public int val;
-
-  public WalkableInteger(Point point) {
-    this((int) Math.round(point.x));
-  }
-
-  public WalkableInteger(int val) {
-    this.val = val;
-  }
-
-  @Override
-  public Integer getVal() {
-    return val;
-  }
-
-  @Override
-  public WalkableInteger prevVal() {
-    return new WalkableInteger(val == Integer.MIN_VALUE ? Integer.MIN_VALUE : val - 1);
-  }
-
-  @Override
-  public WalkableInteger nextVal() {
-    return new WalkableInteger(val == Integer.MAX_VALUE ? Integer.MAX_VALUE : val + 1);
-  }
-
-  @Override
-  public int compareTo(WalkableKey<Integer> o) {
-    return Integer.compare(val, o.getVal());
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    WalkableInteger that = (WalkableInteger) o;
-    return val == that.val;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hashCode(val);
-  }
-}
-
-class DecTree<K, L> {
+class DecTree {
   private static Random random = new Random();
 
   private Node root = null;
   private int size = 0;
 
   private class Node {
-    WalkableKey<K> value;
-    L load;
+    Integer value;
+    Point load;
     public Node left = null;
     public Node right = null;
     public int size = 0;
     private final long priority;
 
-    public Node(WalkableKey<K> value, L load) {
+    public Node(Integer value, Point load) {
       this.value = value;
       this.load = load;
       this.priority = random.nextLong();
@@ -230,8 +152,8 @@ class DecTree<K, L> {
   }
 
   private class Pair {
-    Node first = null;
-    Node second = null;
+    Node first;
+    Node second;
 
     public Pair(Node first, Node second) {
       this.first = first;
@@ -239,7 +161,7 @@ class DecTree<K, L> {
     }
   }
 
-  private Pair split(Node node, WalkableKey<K> key) {
+  private Pair split(Node node, Integer key) {
     if (node == null) {
       return new Pair(null, null);
     }
@@ -299,7 +221,7 @@ class DecTree<K, L> {
     return node == null ? 0 : node.size;
   }
 
-  public void insert(WalkableKey<K> value, L load) {
+  public void insert(Integer value, Point load) {
     if (find(value)) {
       Node tmp = root;
       while (tmp != null) {
@@ -307,7 +229,7 @@ class DecTree<K, L> {
           tmp.load = load;
           return;
         }
-        if (tmp.value.compareTo(value) > 0) {
+        if (tmp.value > value) {
           tmp = tmp.left;
         } else {
           tmp = tmp.right;
@@ -320,13 +242,13 @@ class DecTree<K, L> {
     root = merge(merge(pair.first, node), pair.second);
   }
 
-  public boolean find(WalkableKey<K> value) {
+  public boolean find(Integer value) {
     Node tmp = root;
     while (tmp != null) {
       if (tmp.value.equals(value)) {
         return true;
       }
-      if (tmp.value.compareTo(value) > 0) {
+      if (tmp.value > value) {
         tmp = tmp.left;
       } else {
         tmp = tmp.right;
@@ -335,43 +257,25 @@ class DecTree<K, L> {
     return false;
   }
 
-  public void delete(WalkableKey<K> value) {
+  public void delete(Integer value) {
     if (!find(value)) {
       return;
     }
     size--;
     Pair pair = split(root, value);
-    Pair leftPair = split(pair.first, value.prevVal());
+    Pair leftPair = split(pair.first, value - 1);
     root = merge(leftPair.first, pair.second);
   }
 
   // delete by range of values, inclusive
-  public void deleteRange(WalkableKey<K> valueFrom, WalkableKey<K> valueTo) {
+  public void deleteRange(Integer valueFrom, Integer valueTo) {
     Pair pair = split(root, valueTo);
-    Pair leftPair = split(pair.first, valueFrom.prevVal());
+    Pair leftPair = split(pair.first, valueFrom + 1);
     root = merge(leftPair.first, pair.second);
     size -= leftPair.second == null ? 0 : leftPair.second.size;
   }
 
-  // excludes the value itself
-  // depending on bigger will search next bigger or next smaller
-  public WalkableKey<K> getNext(WalkableKey<K> value, boolean bigger) {
-    return getNext(root, value, bigger);
-  }
-
-  private WalkableKey<K> getNext(Node node, WalkableKey<K> value, boolean bigger) {
-    if (node == null) {
-      return null;
-    }
-    if (bigger && node.value.compareTo(value) > 0 || !bigger && node.value.compareTo(value) < 0) {
-      var counterPart = getNext(bigger ? node.left : node.right, value, bigger);
-      return (bigger ^ node.value.compareTo(counterPart) > 0) ? node.value : counterPart;
-    } else {
-      return bigger ? getNext(node.right, value, bigger) : getNext(node.left, value, bigger);
-    }
-  }
-
-  public L getKth(int k) {
+  public Point getKth(int k) {
     if (size <= k || k < 0) {
       return null;
     }
@@ -393,13 +297,15 @@ class DecTree<K, L> {
 }
 
 class Hull2D {
+  private static final int limit = 1500000000;
+
   record BinarySearchResult(int point1Index, Point point1, Point point2) {
   }
 
-  DecTree<Integer, Point> upperBound = new DecTree<>();
-  DecTree<Integer, Point> lowerBound = new DecTree<>();
+  DecTree upperBound = new DecTree();
+  DecTree lowerBound = new DecTree();
 
-  private BinarySearchResult getCoverSegment(DecTree<Integer, Point> bound, double x) {
+  private BinarySearchResult getCoverSegment(DecTree bound, double x) {
     int l = 0;
     int r = bound.getSize();
     while (r - l > 1) {
@@ -423,17 +329,15 @@ class Hull2D {
     return new BinarySearchResult(l, bound.getKth(l), bound.getKth(l + 1));
   }
 
-  // git inclusive range where to search for break point
-  private BinarySearchResult getL(
-      DecTree<Integer, Point> bound, Point point, int l, int r, boolean upper) {
+  private Point getL(DecTree bound, Point point, int l, int r, boolean upper) {
     if (r - l <= 1) {
-      if (r == l) return new BinarySearchResult(l, bound.getKth(l), null);
+      if (r == l) return bound.getKth(l);
       Point l1 = bound.getKth(l);
       Point l2 = bound.getKth(l + 1);
       Line segmentLine = new Line(l1, l1.vectorToPoint(l2));
       int location = segmentLine.CWLocation(point);
-      if (upper ? location >= 0 : location <= 0) return new BinarySearchResult(l, l1, l2);
-      return new BinarySearchResult(r, l2, null);
+      if (upper ? location >= 0 : location <= 0) return l1;
+      return l2;
     }
     int m = (l + r) / 2;
     Point m1 = bound.getKth(m);
@@ -441,8 +345,8 @@ class Hull2D {
     Line segmentLine = new Line(m1, m1.vectorToPoint(m2));
     int location = segmentLine.CWLocation(point);
     if (location == 0) {
-      return new BinarySearchResult(m, m1, m2);
-    } else if (upper ? location < 0 : location > 0) {
+      return m1;
+    } else if (upper ^ (location > 0)) {
       return getL(bound, point, m, r, upper);
     } else {
       return getL(bound, point, l, m, upper);
@@ -450,16 +354,16 @@ class Hull2D {
   }
 
   // git inclusive range where to search for break point
-  private BinarySearchResult getR(
-      DecTree<Integer, Point> bound, Point point, int l, int r, boolean upper) {
+  private Point getR(
+      DecTree bound, Point point, int l, int r, boolean upper) {
     if (r - l <= 1) {
-      if (r == l) return new BinarySearchResult(l, bound.getKth(l), null);
+      if (r == l) return bound.getKth(l);
       Point r1 = bound.getKth(r - 1);
       Point r2 = bound.getKth(r);
       Line segmentLine = new Line(r1, r1.vectorToPoint(r2));
       int location = segmentLine.CWLocation(point);
-      if (upper ? location >= 0 : location <= 0) return new BinarySearchResult(r, r2, null);
-      return new BinarySearchResult(l, r1, r2);
+      if (upper ? location >= 0 : location <= 0) return r2;
+      return r1;
     }
     int m = (l + r) / 2;
     Point m1 = bound.getKth(m - 1);
@@ -467,8 +371,8 @@ class Hull2D {
     Line segmentLine = new Line(m1, m1.vectorToPoint(m2));
     int location = segmentLine.CWLocation(point);
     if (location == 0) {
-      return new BinarySearchResult(m, m2, null);
-    } else if (upper ? location >= 0 : location <= 0) {
+      return m2;
+    } else if (upper ^ location < 0) {
       return getR(bound, point, m, r, upper);
     } else {
       return getR(bound, point, l, m, upper);
@@ -477,82 +381,72 @@ class Hull2D {
 
   public void addPoint(Point point) {
     if (lowerBound.getSize() == 0) {
-      lowerBound.insert(new WalkableInteger(point), point);
-      upperBound.insert(new WalkableInteger(point), point);
+      lowerBound.insert(point.x, point);
+      upperBound.insert(point.x, point);
       return;
     }
-    if (isInside(point)) return;
     if (lowerBound.getSize() == 1) {
       if (lowerBound.getKth(0).x == point.x) {
         if (lowerBound.getKth(0).y > point.y) {
-          lowerBound.insert(new WalkableInteger(point), point);
+          lowerBound.insert(point.x, point);
         }
         if (upperBound.getKth(0).y < point.y) {
-          upperBound.insert(new WalkableInteger(point), point);
+          upperBound.insert(point.x, point);
         }
       } else {
-        lowerBound.insert(new WalkableInteger(point), point);
-        upperBound.insert(new WalkableInteger(point), point);
+        lowerBound.insert(point.x, point);
+        upperBound.insert(point.x, point);
       }
       return;
     }
+
     var coverLower = getCoverSegment(lowerBound, point.x);
     var coverUpper = getCoverSegment(upperBound, point.x);
     if (coverLower.point1Index == -1) {
       var toKeepL = getR(lowerBound, point, 0, lowerBound.getSize() - 1, false);
       var toKeepU = getR(upperBound, point, 0, upperBound.getSize() - 1, true);
-      lowerBound.deleteRange(
-          new WalkableInteger(Integer.MIN_VALUE), new WalkableInteger(toKeepL.point1).prevVal());
-      upperBound.deleteRange(
-          new WalkableInteger(Integer.MIN_VALUE), new WalkableInteger(toKeepU.point1).prevVal());
-      lowerBound.insert(new WalkableInteger(point), point);
-      upperBound.insert(new WalkableInteger(point), point);
+      lowerBound.deleteRange(-limit, toKeepL.x + 1);
+      upperBound.deleteRange(-limit, toKeepU.x + 1);
+      lowerBound.insert(point.x, point);
+      upperBound.insert(point.x, point);
     } else if (coverLower.point1Index == lowerBound.getSize()) {
       var toKeepL = getL(lowerBound, point, 0, lowerBound.getSize() - 1, false);
       var toKeepU = getL(upperBound, point, 0, upperBound.getSize() - 1, true);
-      lowerBound.deleteRange(
-          new WalkableInteger(toKeepL.point1).nextVal(), new WalkableInteger(Integer.MAX_VALUE));
-      upperBound.deleteRange(
-          new WalkableInteger(toKeepU.point1).nextVal(), new WalkableInteger(Integer.MAX_VALUE));
-      lowerBound.insert(new WalkableInteger(point), point);
-      upperBound.insert(new WalkableInteger(point), point);
+      lowerBound.deleteRange(toKeepL.x, limit);
+      upperBound.deleteRange(toKeepU.x, limit);
+      lowerBound.insert(point.x, point);
+      upperBound.insert(point.x, point);
     } else {
       boolean isAbove =
           GeometryMethods.segmentsIntersection(
                   coverLower.point1,
                   coverLower.point2,
                   point,
-                  new Point(point.x, Integer.MIN_VALUE))
+                  new Point(point.x, -limit))
               .isPresent();
       if (isAbove) {
         var toKeepU1 = getL(upperBound, point, 0, coverUpper.point1Index, true);
         var toKeepU2 =
             getR(upperBound, point, coverUpper.point1Index + 1, upperBound.getSize() - 1, true);
-        upperBound.deleteRange(
-            new WalkableInteger(toKeepU1.point1).nextVal(),
-            new WalkableInteger(toKeepU2.point1).prevVal());
-        if (toKeepU1.point1.x == point.x) upperBound.delete(new WalkableInteger(toKeepU1.point1));
-        if (toKeepU2.point1.x == point.x) upperBound.delete(new WalkableInteger(toKeepU2.point1));
-        upperBound.insert(new WalkableInteger(point), point);
+        upperBound.deleteRange(toKeepU1.x + 1, toKeepU2.x + 1);
+        if (toKeepU1.x == point.x) upperBound.delete(toKeepU1.x);
+        if (toKeepU2.x == point.x) upperBound.delete(toKeepU2.x);
+        upperBound.insert(point.x, point);
       } else {
         var toKeepL1 = getL(lowerBound, point, 0, coverLower.point1Index, false);
         var toKeepL2 =
             getR(lowerBound, point, coverLower.point1Index + 1, lowerBound.getSize() - 1, false);
-        lowerBound.deleteRange(
-            new WalkableInteger(toKeepL1.point1).nextVal(),
-            new WalkableInteger(toKeepL2.point1).prevVal());
-        if (toKeepL1.point1.x == point.x) lowerBound.delete(new WalkableInteger(toKeepL1.point1));
-        if (toKeepL2.point1.x == point.x) lowerBound.delete(new WalkableInteger(toKeepL2.point1));
-        lowerBound.insert(new WalkableInteger(point), point);
+        lowerBound.deleteRange(toKeepL1.x + 1, toKeepL2.x - 1);
+        if (toKeepL1.x == point.x) lowerBound.delete(toKeepL1.x);
+        if (toKeepL2.x == point.x) lowerBound.delete(toKeepL2.x);
+        lowerBound.insert(point.x, point);
       }
     }
   }
 
   public boolean isInside(Point point) {
     if (lowerBound.getSize() == 0) return false;
-    if (lowerBound.getSize() == 1)
-      return GeometryMethods.equalDoubles(
-          lowerBound.getKth(0).vectorToPoint(point).magnitude2(), 0.0);
+    if (lowerBound.getSize() == 1) return lowerBound.getKth(0).vectorToPoint(point).magnitude2() == 0;
     var coverLower = getCoverSegment(lowerBound, point.x);
     var coverUpper = getCoverSegment(upperBound, point.x);
     if (coverLower.point1Index == -1 || coverLower.point1Index == lowerBound.getSize()) {
@@ -560,17 +454,16 @@ class Hull2D {
     }
     boolean cond1 =
         GeometryMethods.segmentsIntersection(
-                coverLower.point1, coverLower.point2, point, new Point(point.x, Integer.MIN_VALUE))
+                coverLower.point1, coverLower.point2, point, new Point(point.x, -limit))
             .isPresent();
     boolean cond2 =
         GeometryMethods.segmentsIntersection(
-                coverUpper.point1, coverUpper.point2, point, new Point(point.x, Integer.MAX_VALUE))
+                coverUpper.point1, coverUpper.point2, point, new Point(point.x, limit))
             .isPresent();
     return cond1 && cond2;
   }
 
-  private BinarySearchResult searchTouchVertex(
-      DecTree<Integer, Point> bound, double angle, boolean upper) {
+  private Point searchTouchVertex(DecTree bound, double angle, boolean upper) {
     int l = 0;
     int r = bound.getSize();
     while (r - l > 1) {
@@ -581,24 +474,28 @@ class Hull2D {
           upper
               ? new Line(from, from.vectorToPoint(mPoint)).getAngle()
               : new Line(mPoint, mPoint.vectorToPoint(from)).getAngle();
-      if (upper
-          ? angle > angleBreak
-          : (angleBreak > 0
-          ? (angle < angleBreak && angle > 0)
-          : (angle > 0 || angle < angleBreak))) {
-        r = m;
+      if (upper) {
+        if (angle > angleBreak) {
+          r = m;
+        } else {
+          l = m;
+        }
       } else {
-        l = m;
+        if ((angleBreak > 0 ? (angle < angleBreak && angle > 0) : (angle > 0 || angle < angleBreak))) {
+          r = m;
+        } else {
+          l = m;
+        }
       }
     }
-    return new BinarySearchResult(l, bound.getKth(l), null);
+    return bound.getKth(l);
   }
 
   public Point getAngleTouch(double angle) {
     if (angle >= Math.PI / -2 && angle <= Math.PI / 2) {
-      return searchTouchVertex(upperBound, angle, true).point1;
+      return searchTouchVertex(upperBound, angle, true);
     } else {
-      return searchTouchVertex(lowerBound, angle, false).point1;
+      return searchTouchVertex(lowerBound, angle, false);
     }
   }
 }
