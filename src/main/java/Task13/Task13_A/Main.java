@@ -7,43 +7,7 @@ import java.util.*;
 public class Main {
   private static final Parser in = new Parser(System.in);
 
-  private static void test() {
-    Random random = new Random();
-    int limit = 10;
-    while (true) {
-      Hull2D hull = new Hull2D();
-      int dotsNumber = random.nextInt(1, 10);
-      List<Point> dots = new ArrayList<>();
-      for (int i = 0; i < dotsNumber; i++) {
-        dots.add(new Point(random.nextInt(-limit, limit), random.nextInt(-limit, limit)));
-        hull.addPoint(dots.get(dots.size() - 1));
-      }
-
-      int requestsNumber = random.nextInt(1, 2);
-      for (int i = 0; i < requestsNumber; i++) {
-        if (random.nextBoolean()) {
-          Line touchLine = new Line(random.nextInt(-limit, limit), random.nextInt(-limit, limit), 0);
-          Point touchPoint = hull.getAngleTouch(touchLine.getAngle());
-          Point trueMax = null;
-          long countedMax1 = Long.MIN_VALUE;
-          for (Point dot : dots) {
-            if (countedMax1 < touchLine.xMul * dot.x + touchLine.yMul * dot.y) {
-              countedMax1 = Math.round(touchLine.xMul * dot.x + touchLine.yMul * dot.y);
-              trueMax = dot;
-            }
-          }
-          long countedMax2 = Math.round(touchLine.applyPoint(touchPoint));
-          if (countedMax1 != countedMax2) {
-            System.out.println("ERROR");
-          }
-        } else {
-        }
-      }
-    }
-  }
-
   public static void main(String[] args) {
-    test();
     Hull2D hull = new Hull2D();
     int dotsNumber = in.nextInt();
     for (int i = 0; i < dotsNumber; i++) {
@@ -57,7 +21,11 @@ public class Main {
       if (method.equals("get")) {
         Line touchLine = new Line(in.nextInt(), in.nextInt(), 0);
         Point touchPoint = hull.getAngleTouch(touchLine.getAngle());
-        answer.append(Math.round(touchLine.applyPoint(touchPoint))).append('\n');
+        answer
+            .append(
+                (long) touchLine.xMul * (long) touchPoint.x
+                    + (long) touchLine.yMul * (long) touchPoint.y)
+            .append('\n');
       } else {
         hull.addPoint(new Point(in.nextInt(), in.nextInt()));
       }
@@ -213,14 +181,12 @@ class WalkableInteger implements WalkableKey<Integer> {
 
   @Override
   public WalkableInteger prevVal() {
-    return new WalkableInteger(
-        val == Integer.MIN_VALUE ? Integer.MIN_VALUE : val - 1);
+    return new WalkableInteger(val == Integer.MIN_VALUE ? Integer.MIN_VALUE : val - 1);
   }
 
   @Override
   public WalkableInteger nextVal() {
-    return new WalkableInteger(
-        val == Integer.MAX_VALUE ? Integer.MAX_VALUE : val + 1);
+    return new WalkableInteger(val == Integer.MAX_VALUE ? Integer.MAX_VALUE : val + 1);
   }
 
   @Override
@@ -536,28 +502,27 @@ class Hull2D {
       var toKeepL = getR(lowerBound, point, 0, lowerBound.getSize() - 1, false);
       var toKeepU = getR(upperBound, point, 0, upperBound.getSize() - 1, true);
       lowerBound.deleteRange(
-          new WalkableInteger(Integer.MIN_VALUE),
-          new WalkableInteger(toKeepL.point1).prevVal());
+          new WalkableInteger(Integer.MIN_VALUE), new WalkableInteger(toKeepL.point1).prevVal());
       upperBound.deleteRange(
-          new WalkableInteger(Integer.MIN_VALUE),
-          new WalkableInteger(toKeepU.point1).prevVal());
+          new WalkableInteger(Integer.MIN_VALUE), new WalkableInteger(toKeepU.point1).prevVal());
       lowerBound.insert(new WalkableInteger(point), point);
       upperBound.insert(new WalkableInteger(point), point);
     } else if (coverLower.point1Index == lowerBound.getSize()) {
       var toKeepL = getL(lowerBound, point, 0, lowerBound.getSize() - 1, false);
       var toKeepU = getL(upperBound, point, 0, upperBound.getSize() - 1, true);
       lowerBound.deleteRange(
-          new WalkableInteger(toKeepL.point1).nextVal(),
-          new WalkableInteger(Integer.MAX_VALUE));
+          new WalkableInteger(toKeepL.point1).nextVal(), new WalkableInteger(Integer.MAX_VALUE));
       upperBound.deleteRange(
-          new WalkableInteger(toKeepU.point1).nextVal(),
-          new WalkableInteger(Integer.MAX_VALUE));
+          new WalkableInteger(toKeepU.point1).nextVal(), new WalkableInteger(Integer.MAX_VALUE));
       lowerBound.insert(new WalkableInteger(point), point);
       upperBound.insert(new WalkableInteger(point), point);
     } else {
       boolean isAbove =
           GeometryMethods.segmentsIntersection(
-                  coverLower.point1, coverLower.point2, point, new Point(point.x, Integer.MIN_VALUE))
+                  coverLower.point1,
+                  coverLower.point2,
+                  point,
+                  new Point(point.x, Integer.MIN_VALUE))
               .isPresent();
       if (isAbove) {
         var toKeepU1 = getL(upperBound, point, 0, coverUpper.point1Index, true);
