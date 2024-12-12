@@ -8,11 +8,13 @@ public class Main {
   private static final Parser in = new Parser(System.in);
 
   public static void main(String[] args) {
-    Hull2D hull = new Hull2D();
     int dotsNumber = in.nextInt();
+    Point[] initialPoints = new Point[dotsNumber];
     for (int i = 0; i < dotsNumber; i++) {
-      hull.addPoint(new Point(in.nextInt(), in.nextInt()));
+      initialPoints[i] = new Point(in.nextInt(), in.nextInt());
     }
+    var envelops = GeoM.buildEnvelops(GeoM.buildConvexHull(initialPoints));
+    Hull2D hull = new Hull2D(envelops.get(0), envelops.get(1));
 
     int requestsNumber = in.nextInt();
     StringBuilder answer = new StringBuilder();
@@ -107,6 +109,10 @@ class GeoM {
     return false;
   }
 
+  public static long crossProduct(Point p11, Point p12, Point p21, Point p22) {
+    return (p12.x - p11.x) * (p22.y - p21.y) - (p12.y - p11.y) * (p22.x - p21.x);
+  }
+
   public static long crossProduct(Vector vector1, Vector vector2) {
     return vector1.x * vector2.y - vector1.y * vector2.x;
   }
@@ -137,19 +143,21 @@ class GeoM {
 
     // sort
     Point point0 = points[0];
-    Arrays.sort(points, (p1, p2) -> {
-      if (p1 == point0) return -1;
-      if (p2 == point0) return 1;
-      Vector vec1 = point0.vectorToPoint(p1);
-      Vector vec2 = point0.vectorToPoint(p2);
-      long result = crossProduct(vec1, vec1);
-      if (result != 0) return result > 0 ? 1 : -1;
-      return Long.compare(vec1.magnitude2(), vec2.magnitude2());
-    });
+    Arrays.sort(
+        points,
+        (p1, p2) -> {
+          if (p1 == point0) return -1;
+          if (p2 == point0) return 1;
+          long result = crossProduct(point0, p1, point0, p2);
+          if (result != 0) return result > 0 ? -1 : 1;
+          return Long.compare(
+              point0.vectorToPoint(p1).magnitude2(), point0.vectorToPoint(p2).magnitude2());
+        });
 
     // get second conv point
     int target = 1;
-    while ((target < points.length - 1) && vect(points[0], points[target + 1], points[0], points[1]) == 0) {
+    while ((target < points.length - 1)
+        && crossProduct(points[0], points[target + 1], points[0], points[1]) == 0) {
       target++;
     }
     conv.add(points[target]);
@@ -159,7 +167,12 @@ class GeoM {
 
     // go through other
     for (int i = target + 2; i < points.length; i++) {
-      while (vect(conv.get(conv.size() - 2), conv.get(conv.size() - 1), conv.get(conv.size() - 1), points[i]) <= 0) {
+      while (crossProduct(
+          conv.get(conv.size() - 2),
+          conv.get(conv.size() - 1),
+          conv.get(conv.size() - 1),
+          points[i])
+          <= 0) {
         conv.remove(conv.size() - 1);
         if (conv.size() == 1) {
           break;
@@ -169,6 +182,60 @@ class GeoM {
     }
 
     return conv;
+  }
+
+  // hull order is CW from the lowest point
+  public static List<List<Point>> buildEnvelops(List<Point> hull) {
+    List<List<Point>> envelops = new ArrayList<>();
+    envelops.add(new ArrayList<>());
+    envelops.add(new ArrayList<>());
+
+    Point leftTop = hull.get(0);
+    int leftTopIndex = 0;
+    Point leftBottom = hull.get(0);
+    int leftBottomIndex = 0;
+    for (int i = 1; i < hull.size(); i++) {
+      Point inCheck = hull.get(i);
+      if (inCheck.x < leftTop.x) {
+        leftTop = inCheck;
+        leftTopIndex = i;
+        leftBottom = inCheck;
+        leftBottomIndex = i;
+      } else if (inCheck.x == leftTop.x && inCheck.y > leftTop.y) {
+        leftTop = inCheck;
+        leftTopIndex = i;
+      } else if (inCheck.x == leftTop.x && inCheck.y < leftBottom.y) {
+        leftBottom = inCheck;
+        leftBottomIndex = i;
+      }
+    }
+
+    envelops.get(0).add(leftBottom);
+    envelops.get(1).add(leftTop);
+
+    Point prevPoint = leftBottom;
+    for (int i = 1; i < hull.size(); i++) {
+      Point inCheck = hull.get((leftBottomIndex + i + hull.size()) % hull.size());
+      if (inCheck.x > prevPoint.x) {
+        envelops.get(0).add(inCheck);
+        prevPoint = inCheck;
+      } else {
+        break;
+      }
+    }
+
+    prevPoint = leftTop;
+    for (int i = 1; i < hull.size(); i++) {
+      Point inCheck = hull.get((leftTopIndex - i + hull.size()) % hull.size());
+      if (inCheck.x > prevPoint.x) {
+        envelops.get(1).add(inCheck);
+        prevPoint = inCheck;
+      } else {
+        break;
+      }
+    }
+
+    return envelops;
   }
 }
 
@@ -346,6 +413,15 @@ class Hull2D {
 
   DecTree upperBound = new DecTree();
   DecTree lowerBound = new DecTree();
+
+  public Hull2D(List<Point> initialLowerBound, List<Point> initialUpperBound) {
+    for (Point point : initialLowerBound) {
+      lowerBound.insert(point.x, point);
+    }
+    for (Point point : initialUpperBound) {
+      upperBound.insert(point.x, point);
+    }
+  }
 
   private BinarySearchResult getCoverSegment(DecTree bound, Long x) {
     int l = 0;
